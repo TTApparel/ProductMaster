@@ -46,14 +46,14 @@ class ProductMaster_Admin_Portal
             return;
         }
 
-        $products = $this->get_apparel_products();
+        $products = $this->get_variable_products();
 
         echo '<div class="wrap productmaster-wrap">';
         echo '<h1>' . esc_html__('ProductMaster Inventory Portal', 'productmaster') . '</h1>';
-        echo '<p>' . esc_html__('Focused overview of apparel products and their size/color variation inventory.', 'productmaster') . '</p>';
+        echo '<p>' . esc_html__('Focused overview of variable products and their size/color variation inventory.', 'productmaster') . '</p>';
 
         if (empty($products)) {
-            echo '<div class="notice notice-info"><p>' . esc_html__('No apparel products found. Add products to the apparel category to populate this view.', 'productmaster') . '</p></div>';
+            echo '<div class="notice notice-info"><p>' . esc_html__('No variable products found. Create variable products to populate this view.', 'productmaster') . '</p></div>';
             echo '</div>';
             return;
         }
@@ -65,13 +65,12 @@ class ProductMaster_Admin_Portal
         echo '</div>';
     }
 
-    private function get_apparel_products()
+    private function get_variable_products()
     {
         $product_ids = wc_get_products(
             array(
                 'status' => array('publish'),
                 'limit' => 200,
-                'category' => array('apparel'),
                 'return' => 'ids',
                 'orderby' => 'title',
                 'order' => 'ASC',

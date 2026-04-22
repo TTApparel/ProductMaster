@@ -9,7 +9,7 @@ Implemented:
 - WordPress plugin bootstrap (`productmaster.php`) with localization support and version constants.
 - Admin menu page: **ProductMaster**.
 - Initial backend portal for WooCommerce admins (`manage_woocommerce`) that displays:
-  - Apparel products in the `apparel` product category.
+  - All published variable products.
   - Variable-product variation breakdown.
   - Size and color attributes per variation.
   - SKU, stock status, and inventory quantity per variation.
@@ -25,7 +25,7 @@ Implemented:
 
 1. Place this project in your WordPress plugins directory.
 2. Activate **ProductMaster** in WordPress admin.
-3. Ensure products are categorized under `apparel` and use variable attributes for size/color.
+3. Ensure products are created as variable products and use attributes for size/color as needed.
 4. Open **ProductMaster** from the WordPress admin sidebar.
 
 ## Product direction / roadmap

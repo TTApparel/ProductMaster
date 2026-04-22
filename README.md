@@ -10,9 +10,9 @@ Implemented:
 - Admin menu page: **ProductMaster**.
 - Initial backend portal for WooCommerce admins (`manage_woocommerce`) that displays:
   - All published variable products.
-  - Variable-product variation breakdown.
-  - Size and color attributes per variation.
-  - SKU, stock status, and inventory quantity per variation.
+  - A per-product toggle to reveal variation inventory.
+  - Variations grouped by size with color-specific cards.
+  - SKU, stock status, and inventory quantity with a visual stock bar per color variation.
 - Basic admin styling for readability.
 
 ## Requirements

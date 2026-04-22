@@ -23,3 +23,68 @@
 .productmaster-card table td {
     vertical-align: middle;
 }
+
+.productmaster-variations-toggle {
+    margin-top: 12px;
+}
+
+.productmaster-variations-toggle > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.productmaster-size-group {
+    margin-top: 16px;
+}
+
+.productmaster-size-group h3 {
+    margin: 0 0 10px;
+}
+
+.productmaster-color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.productmaster-color-card {
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 10px;
+    background: #f6f7f7;
+}
+
+.productmaster-color-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.productmaster-color-name {
+    font-weight: 600;
+}
+
+.productmaster-color-meta {
+    margin: 6px 0 8px;
+    color: #50575e;
+}
+
+.productmaster-stock-track {
+    height: 10px;
+    border-radius: 999px;
+    background: #dcdcde;
+    overflow: hidden;
+}
+
+.productmaster-stock-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #2271b1, #00a32a);
+}
+
+.productmaster-stock-qty {
+    margin: 8px 0 0;
+    font-weight: 600;
+}

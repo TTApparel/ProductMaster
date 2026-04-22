@@ -1,0 +1,25 @@
+.productmaster-wrap {
+    max-width: 1200px;
+}
+
+.productmaster-card {
+    margin-top: 24px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+}
+
+.productmaster-card h2 {
+    margin-top: 0;
+}
+
+.productmaster-card .meta {
+    margin-top: -8px;
+    color: #50575e;
+}
+
+.productmaster-card table th,
+.productmaster-card table td {
+    vertical-align: middle;
+}

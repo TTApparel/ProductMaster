@@ -39,6 +39,7 @@ Implemented:
   - Per-filter Custom CSS box with preview visibility (`{{WRAPPER}}` selector placeholder supported)
 - Front-end filter styles are now enqueued to keep hierarchical indentation/toggles consistent between preview and rendered shortcodes.
 - Legacy filter settings now auto-merge missing presentation keys (including `custom_css`) to prevent undefined index notices on shop pages.
+- Added a Manual Hierarchy Map field so users can define parent/child relationships when hierarchical mode is enabled but taxonomy terms do not include native parent assignments.
 
 ## Requirements
 

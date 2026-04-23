@@ -962,6 +962,13 @@ class ProductMaster_Admin_Portal
                 'hide_empty' => false,
             )
         );
+        $has_parent_terms = false;
+        foreach ($taxonomy_terms as $term) {
+            if ((int) $term->parent === 0) {
+                $has_parent_terms = true;
+                break;
+            }
+        }
 
         echo '<section class="productmaster-card">';
         echo '<h2>' . sprintf(esc_html__('Edit Filter: %s', 'productmaster'), esc_html($filter['label'])) . '</h2>';
@@ -977,6 +984,14 @@ class ProductMaster_Admin_Portal
         echo '<tr><th><label for="pm_text_color">' . esc_html__('Text color', 'productmaster') . '</label></th><td><input id="pm_text_color" name="text_color" type="text" value="' . esc_attr($presentation['text_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_accent_color">' . esc_html__('Accent color', 'productmaster') . '</label></th><td><input id="pm_accent_color" name="accent_color" type="text" value="' . esc_attr($presentation['accent_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_hierarchical_visual">' . esc_html__('Hierarchical', 'productmaster') . '</label></th><td><select id="pm_hierarchical_visual" name="hierarchical_visual"><option value="disabled" ' . selected('disabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Disabled', 'productmaster') . '</option><option value="enabled" ' . selected('enabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Enabled', 'productmaster') . '</option></select></td></tr>';
+        echo '<tr><th><label for="pm_hierarchy_map_text">' . esc_html__('Manual Hierarchy Map', 'productmaster') . '</label></th><td><textarea id="pm_hierarchy_map_text" name="hierarchy_map_text" rows="6" class="large-text code">' . esc_textarea($presentation['hierarchy_map_text']) . '</textarea><p class="description">';
+        echo esc_html__('Use format: parent_slug:child_slug_1,child_slug_2 (one parent per line).', 'productmaster') . ' ';
+        if (!$has_parent_terms) {
+            echo esc_html__('No parent terms detected in this taxonomy. Use this map to define parent/child relationships.', 'productmaster');
+        } else {
+            echo esc_html__('Optional override when you need custom parent/child groupings.', 'productmaster');
+        }
+        echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><select id="pm_allowed_terms" name="allowed_terms[]" multiple size="8">';
         foreach ($taxonomy_terms as $term) {
@@ -1028,6 +1043,8 @@ class ProductMaster_Admin_Portal
             'text_color' => isset($data['text_color']) ? sanitize_hex_color(wp_unslash($data['text_color'])) : $defaults['text_color'],
             'accent_color' => isset($data['accent_color']) ? sanitize_hex_color(wp_unslash($data['accent_color'])) : $defaults['accent_color'],
             'hierarchical_visual' => isset($data['hierarchical_visual']) ? sanitize_key(wp_unslash($data['hierarchical_visual'])) : $defaults['hierarchical_visual'],
+            'hierarchy_map_text' => isset($data['hierarchy_map_text']) ? sanitize_textarea_field(wp_unslash($data['hierarchy_map_text'])) : $defaults['hierarchy_map_text'],
+            'hierarchy_map' => isset($data['hierarchy_map_text']) ? $this->parse_hierarchy_map(wp_unslash($data['hierarchy_map_text'])) : $defaults['hierarchy_map'],
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
             'allowed_terms' => $allowed_terms,
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
@@ -1044,6 +1061,8 @@ class ProductMaster_Admin_Portal
             'text_color' => '#1d2327',
             'accent_color' => '#2271b1',
             'hierarchical_visual' => 'disabled',
+            'hierarchy_map_text' => '',
+            'hierarchy_map' => array(),
             'checkbox_icon' => '☐',
             'allowed_terms' => array(),
             'custom_css' => '',
@@ -1108,10 +1127,17 @@ class ProductMaster_Admin_Portal
     private function render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation)
     {
         $terms_by_parent = array();
+        $terms_by_slug = array();
+        $has_native_parent_relationship = false;
 
         foreach ($terms as $term) {
             if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
                 continue;
+            }
+
+            $terms_by_slug[$term->slug] = $term;
+            if ((int) $term->parent > 0) {
+                $has_native_parent_relationship = true;
             }
 
             $parent_id = (int) $term->parent;
@@ -1119,6 +1145,10 @@ class ProductMaster_Admin_Portal
                 $terms_by_parent[$parent_id] = array();
             }
             $terms_by_parent[$parent_id][] = $term;
+        }
+
+        if (!$has_native_parent_relationship && !empty($presentation['hierarchy_map']) && is_array($presentation['hierarchy_map'])) {
+            $terms_by_parent = $this->build_terms_by_parent_from_manual_map($presentation['hierarchy_map'], $terms_by_slug);
         }
 
         $this->render_hierarchical_term_nodes($terms_by_parent, 0, $filter, $param_key, $selected_value, $presentation);
@@ -1167,5 +1197,84 @@ class ProductMaster_Admin_Portal
 
         $scoped_css = str_replace('{{WRAPPER}}', $wrapper, $custom_css);
         return '<style>' . wp_strip_all_tags($scoped_css) . '</style>';
+    }
+
+    private function parse_hierarchy_map($raw_text)
+    {
+        $map = array();
+        $lines = preg_split('/\r\n|\r|\n/', (string) $raw_text);
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ('' === $line || false === strpos($line, ':')) {
+                continue;
+            }
+
+            list($parent_slug, $children_part) = array_map('trim', explode(':', $line, 2));
+            $parent_slug = sanitize_title($parent_slug);
+            if ('' === $parent_slug) {
+                continue;
+            }
+
+            $children = array_filter(array_map('sanitize_title', array_map('trim', explode(',', $children_part))));
+            if (empty($children)) {
+                continue;
+            }
+
+            $map[$parent_slug] = array_values(array_unique($children));
+        }
+
+        return $map;
+    }
+
+    private function build_terms_by_parent_from_manual_map($hierarchy_map, $terms_by_slug)
+    {
+        $terms_by_parent = array(0 => array());
+        $used_child_ids = array();
+
+        foreach ($hierarchy_map as $parent_slug => $child_slugs) {
+            if (empty($terms_by_slug[$parent_slug])) {
+                continue;
+            }
+
+            $parent_term = $terms_by_slug[$parent_slug];
+            $parent_id = (int) $parent_term->term_id;
+
+            $terms_by_parent[0][] = $parent_term;
+            if (!isset($terms_by_parent[$parent_id])) {
+                $terms_by_parent[$parent_id] = array();
+            }
+
+            foreach ((array) $child_slugs as $child_slug) {
+                if (empty($terms_by_slug[$child_slug])) {
+                    continue;
+                }
+
+                $child_term = $terms_by_slug[$child_slug];
+                $terms_by_parent[$parent_id][] = $child_term;
+                $used_child_ids[] = (int) $child_term->term_id;
+            }
+        }
+
+        foreach ($terms_by_slug as $term) {
+            $term_id = (int) $term->term_id;
+            if (in_array($term_id, $used_child_ids, true)) {
+                continue;
+            }
+
+            $is_existing_parent = false;
+            foreach ($terms_by_parent[0] as $root_term) {
+                if ((int) $root_term->term_id === $term_id) {
+                    $is_existing_parent = true;
+                    break;
+                }
+            }
+
+            if (!$is_existing_parent) {
+                $terms_by_parent[0][] = $term;
+            }
+        }
+
+        return $terms_by_parent;
     }
 }

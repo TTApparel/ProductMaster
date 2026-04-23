@@ -25,6 +25,7 @@ Implemented:
   - Search Fields
   - Currently Selected Filters
   - Reset Products Button
+- Front-end filters now auto-apply in real time on selection/input change (no manual “Filter Products” submit button required).
 - Each created filter now has dedicated shortcode options:
   - Generic: `[productmaster_filter label="FILTER_LABEL"]`
   - Dynamic: `[productmaster_filter_FILTER_LABEL]` (sanitized label slug)

@@ -111,6 +111,14 @@ class ProductMaster_Admin_Portal
             array(),
             PRODUCTMASTER_VERSION
         );
+
+        wp_enqueue_script(
+            'productmaster-frontend',
+            PRODUCTMASTER_URL . 'assets/js/frontend.js',
+            array(),
+            PRODUCTMASTER_VERSION,
+            true
+        );
     }
 
     public function render_inventory_page()
@@ -602,7 +610,6 @@ class ProductMaster_Admin_Portal
         foreach ($filters as $filter) {
             $this->render_single_filter_input($filter);
         }
-        echo '<button type="submit">' . esc_html__('Filter Products', 'productmaster') . '</button>';
 
         echo '</form>';
         return ob_get_clean();

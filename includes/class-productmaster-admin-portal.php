@@ -7,6 +7,9 @@ if (!defined('ABSPATH')) {
 class ProductMaster_Admin_Portal
 {
     const PAGE_SLUG = 'productmaster-portal';
+    const REVIEW_TOOLS_SLUG = 'productmaster-review-tools';
+    const TAXONOMY_FILTERS_SLUG = 'productmaster-taxonomy-filters';
+    const REVIEW_BUILDER_SLUG = 'productmaster-review-builder';
     const PER_PAGE = 20;
 
     public function register_menu()
@@ -16,15 +19,58 @@ class ProductMaster_Admin_Portal
             __('ProductMaster', 'productmaster'),
             'manage_woocommerce',
             self::PAGE_SLUG,
-            array($this, 'render_page'),
+            array($this, 'render_inventory_page'),
             'dashicons-products',
             56
+        );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('Inventory', 'productmaster'),
+            __('Inventory', 'productmaster'),
+            'manage_woocommerce',
+            self::PAGE_SLUG,
+            array($this, 'render_inventory_page')
+        );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('Review Tools', 'productmaster'),
+            __('Review Tools', 'productmaster'),
+            'manage_woocommerce',
+            self::REVIEW_TOOLS_SLUG,
+            array($this, 'render_review_tools_page')
+        );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('Taxonomy Filters', 'productmaster'),
+            __('Taxonomy Filters', 'productmaster'),
+            'manage_woocommerce',
+            self::TAXONOMY_FILTERS_SLUG,
+            array($this, 'render_taxonomy_filters_page')
+        );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('Review Builder', 'productmaster'),
+            __('Review Builder', 'productmaster'),
+            'manage_woocommerce',
+            self::REVIEW_BUILDER_SLUG,
+            array($this, 'render_review_builder_page')
         );
     }
 
     public function enqueue_assets($hook)
     {
-        if ('toplevel_page_' . self::PAGE_SLUG !== $hook) {
+        $allowed_hooks = array(
+            'toplevel_page_' . self::PAGE_SLUG,
+            'productmaster_page_' . self::REVIEW_TOOLS_SLUG,
+            'productmaster_page_' . self::TAXONOMY_FILTERS_SLUG,
+            'productmaster_page_' . self::REVIEW_BUILDER_SLUG,
+        );
+
+        if (!in_array($hook, $allowed_hooks, true)) {
             return;
         }
 
@@ -36,7 +82,7 @@ class ProductMaster_Admin_Portal
         );
     }
 
-    public function render_page()
+    public function render_inventory_page()
     {
         if (!current_user_can('manage_woocommerce')) {
             wp_die(esc_html__('You do not have permission to access this page.', 'productmaster'));
@@ -69,6 +115,30 @@ class ProductMaster_Admin_Portal
         $this->render_pagination($current_page, $total_pages);
 
         echo '</div>';
+    }
+
+    public function render_review_tools_page()
+    {
+        $this->render_placeholder_page(
+            __('Review Tools', 'productmaster'),
+            __('This workspace is reserved for review import and moderation workflows.', 'productmaster')
+        );
+    }
+
+    public function render_taxonomy_filters_page()
+    {
+        $this->render_placeholder_page(
+            __('Taxonomy Filters', 'productmaster'),
+            __('This workspace will host shortcode-driven taxonomy filter tools for archive pages.', 'productmaster')
+        );
+    }
+
+    public function render_review_builder_page()
+    {
+        $this->render_placeholder_page(
+            __('Review Builder', 'productmaster'),
+            __('This workspace will provide visual controls for review display on single product pages.', 'productmaster')
+        );
     }
 
     private function get_variable_products($page)
@@ -279,5 +349,17 @@ class ProductMaster_Admin_Portal
         echo '<span>' . sprintf(esc_html__('Page %1$d of %2$d', 'productmaster'), (int) $current_page, (int) $total_pages) . '</span>';
         echo '<a class="button" href="' . esc_url(add_query_arg('pm_page', $next_page, $base_url)) . '">' . esc_html__('Next', 'productmaster') . '</a>';
         echo '</nav>';
+    }
+
+    private function render_placeholder_page($title, $description)
+    {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(esc_html__('You do not have permission to access this page.', 'productmaster'));
+        }
+
+        echo '<div class="wrap productmaster-wrap">';
+        echo '<h1>' . esc_html($title) . '</h1>';
+        echo '<p>' . esc_html($description) . '</p>';
+        echo '</div>';
     }
 }

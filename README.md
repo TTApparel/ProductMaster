@@ -7,7 +7,7 @@ ProductMaster is a WordPress plugin for WooCommerce stores that need a focused b
 Implemented:
 
 - WordPress plugin bootstrap (`productmaster.php`) with localization support and version constants.
-- Admin menu page: **ProductMaster**.
+- Admin menu page: **ProductMaster** with submenu items for **Inventory**, **Review Tools**, **Taxonomy Filters**, and **Review Builder**.
 - Initial backend portal for WooCommerce admins (`manage_woocommerce`) that displays:
   - All published variable products.
   - Pagination (20 products per page) to keep load times manageable for large catalogs.

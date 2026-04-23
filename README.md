@@ -43,6 +43,7 @@ Implemented:
 - Hierarchical filter branches now stay open after refresh when a child value is selected, preserving context for active selections.
 - When Manual Hierarchy Map is provided, only mapped terms are rendered/accepted for that filter and Included taxonomy term toggles are ignored.
 - Included taxonomy term toggles are displayed in a scrollable textarea-style container with one term per line for easier administration on large taxonomies.
+- When Manual Hierarchy Map is filled, Included taxonomy term toggles automatically sync to the mapped terms.
 
 ## Requirements
 

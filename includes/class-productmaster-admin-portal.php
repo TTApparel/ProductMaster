@@ -960,6 +960,12 @@ class ProductMaster_Admin_Portal
     private function render_filter_presentation_editor($filter)
     {
         $presentation = isset($filter['presentation']) ? $filter['presentation'] : $this->get_default_presentation_settings();
+        $manual_hierarchy_terms = $this->get_manual_hierarchy_allowed_terms(
+            array(
+                'presentation' => $presentation,
+            )
+        );
+        $effective_allowed_terms = !empty($manual_hierarchy_terms) ? $manual_hierarchy_terms : $presentation['allowed_terms'];
         $taxonomy_terms = get_terms(
             array(
                 'taxonomy' => $filter['taxonomy'],
@@ -999,7 +1005,7 @@ class ProductMaster_Admin_Portal
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
         foreach ($taxonomy_terms as $term) {
-            $selected = in_array($term->slug, $presentation['allowed_terms'], true);
+            $selected = in_array($term->slug, $effective_allowed_terms, true);
             echo '<label class="productmaster-term-toggle">';
             echo '<input type="checkbox" name="allowed_terms[]" value="' . esc_attr($term->slug) . '" ' . checked($selected, true, false) . ' />';
             echo '<span>' . esc_html($term->name) . '</span>';
@@ -1041,6 +1047,13 @@ class ProductMaster_Admin_Portal
     {
         $defaults = $this->get_default_presentation_settings();
         $allowed_terms = isset($data['allowed_terms']) && is_array($data['allowed_terms']) ? array_map('sanitize_title', wp_unslash($data['allowed_terms'])) : array();
+        $hierarchy_map_text = isset($data['hierarchy_map_text']) ? sanitize_textarea_field(wp_unslash($data['hierarchy_map_text'])) : $defaults['hierarchy_map_text'];
+        $hierarchy_map = $this->parse_hierarchy_map($hierarchy_map_text);
+        $manual_terms = $this->extract_hierarchy_terms($hierarchy_map);
+
+        if (!empty($manual_terms)) {
+            $allowed_terms = $manual_terms;
+        }
 
         return array(
             'display_text' => isset($data['display_text']) ? sanitize_text_field(wp_unslash($data['display_text'])) : $defaults['display_text'],
@@ -1050,8 +1063,8 @@ class ProductMaster_Admin_Portal
             'text_color' => isset($data['text_color']) ? sanitize_hex_color(wp_unslash($data['text_color'])) : $defaults['text_color'],
             'accent_color' => isset($data['accent_color']) ? sanitize_hex_color(wp_unslash($data['accent_color'])) : $defaults['accent_color'],
             'hierarchical_visual' => isset($data['hierarchical_visual']) ? sanitize_key(wp_unslash($data['hierarchical_visual'])) : $defaults['hierarchical_visual'],
-            'hierarchy_map_text' => isset($data['hierarchy_map_text']) ? sanitize_textarea_field(wp_unslash($data['hierarchy_map_text'])) : $defaults['hierarchy_map_text'],
-            'hierarchy_map' => isset($data['hierarchy_map_text']) ? $this->parse_hierarchy_map(wp_unslash($data['hierarchy_map_text'])) : $defaults['hierarchy_map'],
+            'hierarchy_map_text' => $hierarchy_map_text,
+            'hierarchy_map' => $hierarchy_map,
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
             'allowed_terms' => $allowed_terms,
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
@@ -1295,8 +1308,13 @@ class ProductMaster_Admin_Portal
             return array();
         }
 
+        return $this->extract_hierarchy_terms($filter['presentation']['hierarchy_map']);
+    }
+
+    private function extract_hierarchy_terms($hierarchy_map)
+    {
         $terms = array();
-        foreach ($filter['presentation']['hierarchy_map'] as $parent => $children) {
+        foreach ((array) $hierarchy_map as $parent => $children) {
             $terms[] = sanitize_title((string) $parent);
             foreach ((array) $children as $child) {
                 $terms[] = sanitize_title((string) $child);

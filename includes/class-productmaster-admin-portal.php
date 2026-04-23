@@ -80,6 +80,26 @@ class ProductMaster_Admin_Portal
             array(),
             PRODUCTMASTER_VERSION
         );
+
+        wp_enqueue_script(
+            'productmaster-admin',
+            PRODUCTMASTER_URL . 'assets/js/admin.js',
+            array('jquery'),
+            PRODUCTMASTER_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'productmaster-admin',
+            'productmasterAdmin',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('productmaster_update_stock'),
+                'savingText' => __('Saving...', 'productmaster'),
+                'savedText' => __('Saved', 'productmaster'),
+                'errorText' => __('Unable to save inventory.', 'productmaster'),
+            )
+        );
     }
 
     public function render_inventory_page()
@@ -220,7 +240,7 @@ class ProductMaster_Admin_Portal
                 echo '<div class="productmaster-stock-track" role="img" aria-label="' . esc_attr(sprintf(__('Inventory level for color %1$s size %2$s', 'productmaster'), $color, $row['size'])) . '">';
                 echo '<span class="productmaster-stock-fill" style="width:' . esc_attr((string) $progress) . '%;"></span>';
                 echo '</div>';
-                echo '<p class="productmaster-stock-qty">' . esc_html($inventory_label) . '</p>';
+                echo $this->render_inventory_editor($row['variation_id'], $row['qty'], $row['managing_stock'], $inventory_label);
                 echo '</article>';
             }
 
@@ -351,6 +371,26 @@ class ProductMaster_Admin_Portal
         echo '</nav>';
     }
 
+    private function render_inventory_editor($variation_id, $qty, $managing_stock, $inventory_label)
+    {
+        if (!$managing_stock) {
+            return '<p class="productmaster-stock-qty"><strong>' . esc_html__('Inventory Value:', 'productmaster') . '</strong> ' . esc_html($inventory_label) . '</p>';
+        }
+
+        $qty_value = null === $qty ? '' : (string) $qty;
+
+        $output = '<div class="productmaster-stock-editor">';
+        $output .= '<label for="productmaster-stock-' . esc_attr((string) $variation_id) . '"><strong>' . esc_html__('Inventory Value:', 'productmaster') . '</strong></label>';
+        $output .= '<div class="productmaster-stock-controls">';
+        $output .= '<input id="productmaster-stock-' . esc_attr((string) $variation_id) . '" type="number" min="0" step="1" class="productmaster-stock-input" value="' . esc_attr($qty_value) . '" data-variation-id="' . esc_attr((string) $variation_id) . '" />';
+        $output .= '<button type="button" class="button button-secondary productmaster-save-stock" data-variation-id="' . esc_attr((string) $variation_id) . '">' . esc_html__('Update', 'productmaster') . '</button>';
+        $output .= '</div>';
+        $output .= '<p class="productmaster-stock-feedback" data-variation-id="' . esc_attr((string) $variation_id) . '" aria-live="polite"></p>';
+        $output .= '</div>';
+
+        return $output;
+    }
+
     private function render_placeholder_page($title, $description)
     {
         if (!current_user_can('manage_woocommerce')) {
@@ -361,5 +401,41 @@ class ProductMaster_Admin_Portal
         echo '<h1>' . esc_html($title) . '</h1>';
         echo '<p>' . esc_html($description) . '</p>';
         echo '</div>';
+    }
+
+    public function ajax_update_variation_stock()
+    {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'productmaster')), 403);
+        }
+
+        check_ajax_referer('productmaster_update_stock', 'nonce');
+
+        $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
+        $qty = isset($_POST['qty']) ? wc_stock_amount(wp_unslash($_POST['qty'])) : null;
+
+        if ($variation_id <= 0 || null === $qty || $qty < 0) {
+            wp_send_json_error(array('message' => __('Invalid inventory value.', 'productmaster')), 400);
+        }
+
+        $variation = wc_get_product($variation_id);
+
+        if (!$variation instanceof WC_Product_Variation) {
+            wp_send_json_error(array('message' => __('Variation not found.', 'productmaster')), 404);
+        }
+
+        if (!$variation->managing_stock()) {
+            wp_send_json_error(array('message' => __('Stock management is disabled for this variation.', 'productmaster')), 400);
+        }
+
+        $variation->set_stock_quantity($qty);
+        $variation->save();
+
+        wp_send_json_success(
+            array(
+                'qty' => $variation->get_stock_quantity(),
+                'message' => __('Inventory updated.', 'productmaster'),
+            )
+        );
     }
 }

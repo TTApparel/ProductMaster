@@ -98,6 +98,33 @@
     font-weight: 600;
 }
 
+.productmaster-stock-editor {
+    margin-top: 8px;
+}
+
+.productmaster-stock-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.productmaster-stock-input {
+    width: 90px;
+}
+
+.productmaster-stock-feedback {
+    margin: 6px 0 0;
+    font-size: 12px;
+}
+
+.productmaster-stock-feedback.is-success {
+    color: #008a20;
+}
+
+.productmaster-stock-feedback.is-error {
+    color: #d63638;
+}
+
 .productmaster-pagination {
     margin: 20px 0 8px;
     display: flex;

@@ -35,6 +35,7 @@ Implemented:
   - Hierarchical mode (`Disabled` / `Enabled`) with parent-only display and nested child-category toggles when enabled
   - Checkbox icon customization
   - Include/exclude specific taxonomy terms
+  - Per-filter Custom CSS box with preview visibility (`{{WRAPPER}}` selector placeholder supported)
 
 ## Requirements
 

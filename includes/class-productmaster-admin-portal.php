@@ -833,10 +833,13 @@ class ProductMaster_Admin_Portal
         );
         $presentation = isset($filter['presentation']) ? $filter['presentation'] : $this->get_default_presentation_settings();
         $style = $this->build_filter_inline_style($presentation);
-        $wrapper_classes = 'productmaster-filter-group';
+        $instance_class = 'productmaster-filter-instance-' . sanitize_html_class($filter['id']);
+        $wrapper_classes = 'productmaster-filter-group ' . $instance_class;
         if ('1' !== $presentation['use_theme_colors']) {
             $wrapper_classes .= ' productmaster-filter-custom';
         }
+
+        echo $this->build_custom_css_output($filter['id'], $presentation['custom_css']);
 
         echo '<fieldset class="' . esc_attr($wrapper_classes) . '" style="' . esc_attr($style) . '">';
         echo '<legend style="font-size:' . esc_attr((string) $presentation['font_size']) . 'px;">' . esc_html($presentation['display_text']) . '</legend>';
@@ -959,6 +962,7 @@ class ProductMaster_Admin_Portal
             echo '<option value="' . esc_attr($term->slug) . '" ' . selected($selected, true, false) . '>' . esc_html($term->name) . '</option>';
         }
         echo '</select><p class="description">' . esc_html__('Leave empty to include all taxonomy terms.', 'productmaster') . '</p></td></tr>';
+        echo '<tr><th><label for="pm_custom_css">' . esc_html__('Custom CSS', 'productmaster') . '</label></th><td><textarea id="pm_custom_css" name="custom_css" rows="8" class="large-text code">' . esc_textarea($presentation['custom_css']) . '</textarea><p class="description">' . esc_html__('Use CSS declarations or full CSS. For full CSS selectors, use {{WRAPPER}} to target this filter instance.', 'productmaster') . '</p></td></tr>';
         echo '</tbody></table>';
         submit_button(__('Save Presentation', 'productmaster'));
         echo '</form>';
@@ -969,6 +973,7 @@ class ProductMaster_Admin_Portal
         echo '<div class="productmaster-filter-preview">';
         $this->render_single_filter_input($preview_filter);
         echo '</div>';
+        echo '<script>document.addEventListener("DOMContentLoaded",function(){var cssInput=document.getElementById("pm_custom_css");if(!cssInput){return;}var styleId="productmaster-preview-custom-css";var styleTag=document.getElementById(styleId);if(!styleTag){styleTag=document.createElement("style");styleTag.id=styleId;document.head.appendChild(styleTag);}var wrapper=".productmaster-filter-preview .productmaster-filter-instance-' . esc_js($filter['id']) . '";var applyCss=function(){var value=cssInput.value||"";if(value.indexOf("{")===-1){styleTag.textContent=wrapper+"{"+value+"}";return;}styleTag.textContent=value.replace(/\\{\\{WRAPPER\\}\\}/g,wrapper);};cssInput.addEventListener("input",applyCss);applyCss();});</script>';
         echo '</section>';
     }
 
@@ -1003,6 +1008,7 @@ class ProductMaster_Admin_Portal
             'hierarchical_visual' => isset($data['hierarchical_visual']) ? sanitize_key(wp_unslash($data['hierarchical_visual'])) : $defaults['hierarchical_visual'],
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
             'allowed_terms' => $allowed_terms,
+            'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
         );
     }
 
@@ -1018,6 +1024,7 @@ class ProductMaster_Admin_Portal
             'hierarchical_visual' => 'disabled',
             'checkbox_icon' => '☐',
             'allowed_terms' => array(),
+            'custom_css' => '',
         );
     }
 
@@ -1121,5 +1128,22 @@ class ProductMaster_Admin_Portal
             }
             echo '</div>';
         }
+    }
+
+    private function build_custom_css_output($filter_id, $custom_css)
+    {
+        $custom_css = trim((string) $custom_css);
+        if ('' === $custom_css) {
+            return '';
+        }
+
+        $wrapper = '.productmaster-filter-instance-' . sanitize_html_class($filter_id);
+
+        if (false === strpos($custom_css, '{')) {
+            return '<style>' . $wrapper . '{' . wp_strip_all_tags($custom_css) . '}</style>';
+        }
+
+        $scoped_css = str_replace('{{WRAPPER}}', $wrapper, $custom_css);
+        return '<style>' . wp_strip_all_tags($scoped_css) . '</style>';
     }
 }

@@ -1453,6 +1453,25 @@ class ProductMaster_Admin_Portal
         return $clean;
     }
 
+    private function resolve_term_image_url($term, $presentation)
+    {
+        if (!is_object($term) || empty($term->slug)) {
+            return '';
+        }
+
+        $slug = (string) $term->slug;
+        if (!empty($presentation['term_images'][$slug])) {
+            return esc_url((string) $presentation['term_images'][$slug]);
+        }
+
+        $swatch_image = get_term_meta((int) $term->term_id, 'smart-swatches-framework--src', true);
+        if (is_string($swatch_image) && '' !== $swatch_image) {
+            return esc_url($swatch_image);
+        }
+
+        return '';
+    }
+
     private function render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation)
     {
         $selected_values = is_array($selected_value) ? $selected_value : array();
@@ -1473,7 +1492,7 @@ class ProductMaster_Admin_Portal
 
                 $parent_term = $term_by_slug[$parent_slug];
                 $parent_checked = in_array($parent_slug, $selected_values, true);
-                $parent_image = isset($presentation['term_images'][$parent_slug]) ? $presentation['term_images'][$parent_slug] : '';
+                $parent_image = $this->resolve_term_image_url($parent_term, $presentation);
 
                 echo '<div class="productmaster-image-parent">';
                 echo '<label class="productmaster-image-parent-label">';
@@ -1486,16 +1505,27 @@ class ProductMaster_Admin_Portal
                 echo '</label>';
 
                 if (!empty($child_slugs)) {
-                    echo '<div class="productmaster-image-children-menu">';
-                    echo '<div class="productmaster-image-children-header">' . esc_html($parent_term->name) . '</div>';
+                    echo '<div class="productmaster-image-children-menu" data-parent-slug="' . esc_attr($parent_slug) . '">';
+                    echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($parent_slug) . '" /> ' . esc_html($parent_term->name) . '</label>';
+                    echo '<div class="productmaster-image-children-grid">';
                     foreach ((array) $child_slugs as $child_slug) {
                         if (!isset($term_by_slug[$child_slug])) {
                             continue;
                         }
                         $child_term = $term_by_slug[$child_slug];
                         $child_checked = in_array($child_slug, $selected_values, true);
-                        echo '<label><input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' /> ' . esc_html($child_term->name) . '</label>';
+                        $child_image = $this->resolve_term_image_url($child_term, $presentation);
+                        echo '<label class="productmaster-image-child-label">';
+                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';
+                        echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
+                        if (!empty($child_image)) {
+                            echo '<img src="' . esc_url($child_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';
+                        } else {
+                            echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($child_term->name, 0, 1)) . '</span>';
+                        }
+                        echo '</label>';
                     }
+                    echo '</div>';
                     echo '</div>';
                 }
 
@@ -1507,7 +1537,7 @@ class ProductMaster_Admin_Portal
                     continue;
                 }
                 $checked = in_array($term->slug, $selected_values, true);
-                $image = isset($presentation['term_images'][$term->slug]) ? $presentation['term_images'][$term->slug] : '';
+                $image = $this->resolve_term_image_url($term, $presentation);
                 echo '<label class="productmaster-image-parent-label">';
                 echo '<input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
                 if (!empty($image)) {

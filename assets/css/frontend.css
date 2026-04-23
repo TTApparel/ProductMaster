@@ -99,10 +99,6 @@
     background: #f0f0f1;
 }
 
-.productmaster-image-caption {
-    font-size: 12px;
-}
-
 .productmaster-image-children-menu {
     display: none;
     position: absolute;
@@ -114,6 +110,11 @@
     padding: 8px;
     z-index: 20;
     min-width: 180px;
+}
+
+.productmaster-image-children-header {
+    font-weight: 600;
+    margin-bottom: 6px;
 }
 
 .productmaster-image-parent:hover .productmaster-image-children-menu {

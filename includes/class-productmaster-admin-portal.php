@@ -1484,10 +1484,10 @@ class ProductMaster_Admin_Portal
                     echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($parent_term->name, 0, 1)) . '</span>';
                 }
                 echo '</label>';
-                echo '<span class="productmaster-image-caption">' . esc_html($parent_term->name) . '</span>';
 
                 if (!empty($child_slugs)) {
                     echo '<div class="productmaster-image-children-menu">';
+                    echo '<div class="productmaster-image-children-header">' . esc_html($parent_term->name) . '</div>';
                     foreach ((array) $child_slugs as $child_slug) {
                         if (!isset($term_by_slug[$child_slug])) {
                             continue;
@@ -1515,7 +1515,6 @@ class ProductMaster_Admin_Portal
                 } else {
                     echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($term->name, 0, 1)) . '</span>';
                 }
-                echo '<span class="productmaster-image-caption">' . esc_html($term->name) . '</span>';
                 echo '</label>';
             }
         }

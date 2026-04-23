@@ -46,11 +46,10 @@
 
 .productmaster-size-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(160px, 160px));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     column-gap: 12px;
     row-gap: 12px;
-    justify-content: start;
-    overflow-x: auto;
+    justify-content: stretch;
     padding-bottom: 6px;
 }
 
@@ -104,12 +103,17 @@
 
 .productmaster-stock-controls {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 4px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .productmaster-stock-input {
     width: 90px;
+    max-width: 100%;
 }
 
 .productmaster-stock-feedback {

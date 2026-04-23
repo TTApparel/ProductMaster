@@ -168,3 +168,11 @@
     border-radius: 6px;
     background: #fff;
 }
+
+.productmaster-hierarchical-parent {
+    margin-bottom: 8px;
+}
+
+.productmaster-hierarchical-children {
+    margin: 6px 0 0 20px;
+}

@@ -891,7 +891,7 @@ class ProductMaster_Admin_Portal
 
         echo '<fieldset class="' . esc_attr($wrapper_classes) . '" style="' . esc_attr($style) . '">';
 
-        if ('checkboxes' === $filter['type'] || 'image_boxes' === $filter['type']) {
+        if ('checkboxes' === $filter['type']) {
             if ('enabled' === $presentation['hierarchical_visual'] && is_taxonomy_hierarchical($filter['taxonomy'])) {
                 $this->render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation);
             } else {
@@ -904,6 +904,8 @@ class ProductMaster_Admin_Portal
                     echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
                 }
             }
+        } elseif ('image_boxes' === $filter['type']) {
+            $this->render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation);
         } elseif ('drop_down_selectors' === $filter['type']) {
             $extra_class = 'enabled' === $presentation['hierarchical_visual'] ? 'productmaster-hierarchical-enabled' : '';
             $manual_hierarchy = isset($presentation['hierarchy_map']) ? (array) $presentation['hierarchy_map'] : array();
@@ -1031,6 +1033,8 @@ class ProductMaster_Admin_Portal
         }
         echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
+        echo '<tr><th><label for="pm_image_box_width">' . esc_html__('Image box width (px)', 'productmaster') . '</label></th><td><input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /></td></tr>';
+        echo '<tr><th><label for="pm_image_box_height">' . esc_html__('Image box height (px)', 'productmaster') . '</label></th><td><input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
         usort(
             $taxonomy_terms,
@@ -1126,6 +1130,8 @@ class ProductMaster_Admin_Portal
             'hierarchy_map_text' => $hierarchy_map_text,
             'hierarchy_map' => $hierarchy_map,
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
+            'image_box_width' => isset($data['image_box_width']) ? max(16, min(240, absint($data['image_box_width']))) : $defaults['image_box_width'],
+            'image_box_height' => isset($data['image_box_height']) ? max(16, min(240, absint($data['image_box_height']))) : $defaults['image_box_height'],
             'allowed_terms' => $allowed_terms,
             'term_images' => isset($data['term_images']) && is_array($data['term_images']) ? $this->sanitize_term_images(wp_unslash($data['term_images'])) : $defaults['term_images'],
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
@@ -1145,6 +1151,8 @@ class ProductMaster_Admin_Portal
             'hierarchy_map_text' => '',
             'hierarchy_map' => array(),
             'checkbox_icon' => '☐',
+            'image_box_width' => 40,
+            'image_box_height' => 40,
             'allowed_terms' => array(),
             'term_images' => array(),
             'custom_css' => '',
@@ -1443,5 +1451,75 @@ class ProductMaster_Admin_Portal
         }
 
         return $clean;
+    }
+
+    private function render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation)
+    {
+        $selected_values = is_array($selected_value) ? $selected_value : array();
+        $term_by_slug = array();
+        foreach ($terms as $term) {
+            $term_by_slug[$term->slug] = $term;
+        }
+
+        $manual_hierarchy = isset($presentation['hierarchy_map']) ? (array) $presentation['hierarchy_map'] : array();
+        $styles = '--pm-image-box-width:' . (int) $presentation['image_box_width'] . 'px;--pm-image-box-height:' . (int) $presentation['image_box_height'] . 'px;';
+        echo '<div class="productmaster-image-box-grid" style="' . esc_attr($styles) . '">';
+
+        if (!empty($manual_hierarchy)) {
+            foreach ($manual_hierarchy as $parent_slug => $child_slugs) {
+                if (!isset($term_by_slug[$parent_slug])) {
+                    continue;
+                }
+
+                $parent_term = $term_by_slug[$parent_slug];
+                $parent_checked = in_array($parent_slug, $selected_values, true);
+                $parent_image = isset($presentation['term_images'][$parent_slug]) ? $presentation['term_images'][$parent_slug] : '';
+
+                echo '<div class="productmaster-image-parent">';
+                echo '<label class="productmaster-image-parent-label">';
+                echo '<input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
+                if (!empty($parent_image)) {
+                    echo '<img src="' . esc_url($parent_image) . '" alt="' . esc_attr($parent_term->name) . '" class="productmaster-image-thumb" />';
+                } else {
+                    echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($parent_term->name, 0, 1)) . '</span>';
+                }
+                echo '</label>';
+                echo '<span class="productmaster-image-caption">' . esc_html($parent_term->name) . '</span>';
+
+                if (!empty($child_slugs)) {
+                    echo '<div class="productmaster-image-children-menu">';
+                    foreach ((array) $child_slugs as $child_slug) {
+                        if (!isset($term_by_slug[$child_slug])) {
+                            continue;
+                        }
+                        $child_term = $term_by_slug[$child_slug];
+                        $child_checked = in_array($child_slug, $selected_values, true);
+                        echo '<label><input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' /> ' . esc_html($child_term->name) . '</label>';
+                    }
+                    echo '</div>';
+                }
+
+                echo '</div>';
+            }
+        } else {
+            foreach ($terms as $term) {
+                if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
+                    continue;
+                }
+                $checked = in_array($term->slug, $selected_values, true);
+                $image = isset($presentation['term_images'][$term->slug]) ? $presentation['term_images'][$term->slug] : '';
+                echo '<label class="productmaster-image-parent-label">';
+                echo '<input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
+                if (!empty($image)) {
+                    echo '<img src="' . esc_url($image) . '" alt="' . esc_attr($term->name) . '" class="productmaster-image-thumb" />';
+                } else {
+                    echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($term->name, 0, 1)) . '</span>';
+                }
+                echo '<span class="productmaster-image-caption">' . esc_html($term->name) . '</span>';
+                echo '</label>';
+            }
+        }
+
+        echo '</div>';
     }
 }

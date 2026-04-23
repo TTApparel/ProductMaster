@@ -302,8 +302,36 @@
 }
 
 .productmaster-image-children-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-weight: 600;
     margin-bottom: 6px;
+    cursor: pointer;
+}
+
+.productmaster-image-children-header input[type="checkbox"] {
+    margin: 0;
+}
+
+
+.productmaster-image-children-grid {
+    display: grid;
+    gap: 6px;
+}
+
+.productmaster-image-child-label {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.productmaster-image-child-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .productmaster-image-parent:hover .productmaster-image-children-menu {

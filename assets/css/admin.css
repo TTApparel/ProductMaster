@@ -136,3 +136,27 @@
     align-items: center;
     gap: 12px;
 }
+
+.productmaster-filters-form {
+    display: grid;
+    gap: 12px;
+    margin: 14px 0;
+}
+
+.productmaster-filter-group {
+    border: 1px solid #dcdcde;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+.productmaster-filter-group legend {
+    font-weight: 600;
+}
+
+.productmaster-image-box {
+    display: inline-block;
+    padding: 8px;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    margin-right: 8px;
+}

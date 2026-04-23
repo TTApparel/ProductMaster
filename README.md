@@ -17,6 +17,14 @@ Implemented:
   - Clearly labeled **Inventory Value** controls that allow real-time stock updates per size variation directly from the Inventory screen.
   - Grid/card spacing tweaks to prevent overlap between size cards in dense catalogs.
 - Basic admin styling for readability.
+- Taxonomy Filters admin workspace now supports creating shortcode-based filters from existing product categories/attributes with default filter UIs for:
+  - Checkboxes
+  - Image boxes
+  - Drop down selectors
+  - Sliders (price range)
+  - Search Fields
+  - Currently Selected Filters
+  - Reset Products Button
 
 ## Requirements
 

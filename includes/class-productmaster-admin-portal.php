@@ -11,6 +11,7 @@ class ProductMaster_Admin_Portal
     const TAXONOMY_FILTERS_SLUG = 'productmaster-taxonomy-filters';
     const REVIEW_BUILDER_SLUG = 'productmaster-review-builder';
     const PER_PAGE = 20;
+    const FILTER_OPTION_KEY = 'productmaster_taxonomy_filters';
 
     public function register_menu()
     {
@@ -147,10 +148,70 @@ class ProductMaster_Admin_Portal
 
     public function render_taxonomy_filters_page()
     {
-        $this->render_placeholder_page(
-            __('Taxonomy Filters', 'productmaster'),
-            __('This workspace will host shortcode-driven taxonomy filter tools for archive pages.', 'productmaster')
-        );
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(esc_html__('You do not have permission to access this page.', 'productmaster'));
+        }
+
+        $notice = $this->handle_taxonomy_filter_actions();
+        $filters = $this->get_saved_taxonomy_filters();
+        $taxonomy_options = $this->get_taxonomy_options();
+
+        echo '<div class="wrap productmaster-wrap">';
+        echo '<h1>' . esc_html__('Taxonomy Filters', 'productmaster') . '</h1>';
+        echo '<p>' . esc_html__('Create shortcode-driven product loop filters using existing product categories and attributes.', 'productmaster') . '</p>';
+
+        if (!empty($notice)) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
+        }
+
+        echo '<section class="productmaster-card">';
+        echo '<h2>' . esc_html__('Create New Filter', 'productmaster') . '</h2>';
+        echo '<form method="post">';
+        wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
+        echo '<input type="hidden" name="productmaster_action" value="add_filter" />';
+        echo '<table class="form-table" role="presentation"><tbody>';
+        echo '<tr><th scope="row"><label for="pm_filter_label">' . esc_html__('Filter Label', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_filter_label" name="filter_label" type="text" required /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_filter_taxonomy">' . esc_html__('Category / Attribute', 'productmaster') . '</label></th><td><select id="pm_filter_taxonomy" name="filter_taxonomy">';
+        foreach ($taxonomy_options as $taxonomy => $label) {
+            echo '<option value="' . esc_attr($taxonomy) . '">' . esc_html($label) . '</option>';
+        }
+        echo '</select></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_filter_type">' . esc_html__('Filter Type', 'productmaster') . '</label></th><td><select id="pm_filter_type" name="filter_type">';
+        foreach ($this->get_supported_filter_types() as $type => $label) {
+            echo '<option value="' . esc_attr($type) . '">' . esc_html($label) . '</option>';
+        }
+        echo '</select></td></tr>';
+        echo '</tbody></table>';
+        submit_button(__('Add Filter', 'productmaster'));
+        echo '</form>';
+        echo '</section>';
+
+        echo '<section class="productmaster-card">';
+        echo '<h2>' . esc_html__('Configured Filters', 'productmaster') . '</h2>';
+        echo '<p>' . esc_html__('Use shortcode:', 'productmaster') . ' <code>[productmaster_filters]</code></p>';
+
+        if (empty($filters)) {
+            echo '<p>' . esc_html__('No filters configured yet.', 'productmaster') . '</p>';
+        } else {
+            echo '<table class="widefat striped"><thead><tr><th>' . esc_html__('Label', 'productmaster') . '</th><th>' . esc_html__('Taxonomy', 'productmaster') . '</th><th>' . esc_html__('Type', 'productmaster') . '</th><th>' . esc_html__('Action', 'productmaster') . '</th></tr></thead><tbody>';
+            foreach ($filters as $filter) {
+                $type_label = $this->get_supported_filter_types()[$filter['type']] ?? $filter['type'];
+                echo '<tr>';
+                echo '<td>' . esc_html($filter['label']) . '</td>';
+                echo '<td>' . esc_html($taxonomy_options[$filter['taxonomy']] ?? $filter['taxonomy']) . '</td>';
+                echo '<td>' . esc_html($type_label) . '</td>';
+                echo '<td><form method="post">';
+                wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
+                echo '<input type="hidden" name="productmaster_action" value="delete_filter" />';
+                echo '<input type="hidden" name="filter_id" value="' . esc_attr($filter['id']) . '" />';
+                submit_button(__('Delete', 'productmaster'), 'delete small', 'submit', false);
+                echo '</form></td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table>';
+        }
+        echo '</section>';
+        echo '</div>';
     }
 
     public function render_review_builder_page()
@@ -436,6 +497,273 @@ class ProductMaster_Admin_Portal
                 'qty' => $variation->get_stock_quantity(),
                 'message' => __('Inventory updated.', 'productmaster'),
             )
+        );
+    }
+
+    public function render_filters_shortcode()
+    {
+        $filters = $this->get_saved_taxonomy_filters();
+        if (empty($filters)) {
+            return '';
+        }
+
+        ob_start();
+        echo '<form class="productmaster-filters-form" method="get">';
+        foreach ($filters as $filter) {
+            $this->render_single_filter_input($filter);
+        }
+
+        if (!isset($this->get_filter_types_without_taxonomy()['reset_button'])) {
+            echo '<button type="submit">' . esc_html__('Filter Products', 'productmaster') . '</button>';
+        }
+
+        echo '</form>';
+        return ob_get_clean();
+    }
+
+    public function apply_filters_to_product_query($query)
+    {
+        if (is_admin() || !$query->is_main_query()) {
+            return;
+        }
+
+        $post_type = $query->get('post_type');
+        if ('product' !== $post_type && !is_shop() && !is_product_taxonomy()) {
+            return;
+        }
+
+        $filters = $this->get_saved_taxonomy_filters();
+        if (empty($filters)) {
+            return;
+        }
+
+        $tax_query = (array) $query->get('tax_query', array());
+        $meta_query = (array) $query->get('meta_query', array());
+
+        foreach ($filters as $filter) {
+            $param_key = 'pmf_' . $filter['id'];
+            $raw_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+            if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && is_array($raw_value) && !empty($raw_value)) {
+                $tax_query[] = array(
+                    'taxonomy' => $filter['taxonomy'],
+                    'field' => 'slug',
+                    'terms' => array_map('sanitize_title', $raw_value),
+                    'operator' => 'IN',
+                );
+            }
+
+            if ('drop_down_selectors' === $filter['type'] && !empty($raw_value)) {
+                $tax_query[] = array(
+                    'taxonomy' => $filter['taxonomy'],
+                    'field' => 'slug',
+                    'terms' => array(sanitize_title((string) $raw_value)),
+                    'operator' => 'IN',
+                );
+            }
+
+            if ('search_fields' === $filter['type'] && !empty($raw_value)) {
+                $query->set('s', sanitize_text_field((string) $raw_value));
+            }
+        }
+
+        $min_price = isset($_GET['pmf_min_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_min_price'])) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $max_price = isset($_GET['pmf_max_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_max_price'])) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+        if (null !== $min_price || null !== $max_price) {
+            $meta_query[] = array(
+                'key' => '_price',
+                'value' => array(
+                    null !== $min_price ? (float) $min_price : 0,
+                    null !== $max_price ? (float) $max_price : 999999,
+                ),
+                'compare' => 'BETWEEN',
+                'type' => 'DECIMAL',
+            );
+        }
+
+        if (!empty($tax_query)) {
+            $query->set('tax_query', $tax_query);
+        }
+
+        if (!empty($meta_query)) {
+            $query->set('meta_query', $meta_query);
+        }
+    }
+
+    private function handle_taxonomy_filter_actions()
+    {
+        if ('POST' !== $_SERVER['REQUEST_METHOD']) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+            return '';
+        }
+
+        if (!isset($_POST['productmaster_action']) || !isset($_POST['productmaster_tax_filter_nonce'])) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            return '';
+        }
+
+        check_admin_referer('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
+
+        $action = sanitize_text_field(wp_unslash($_POST['productmaster_action'])); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $filters = $this->get_saved_taxonomy_filters();
+
+        if ('add_filter' === $action) {
+            $label = isset($_POST['filter_label']) ? sanitize_text_field(wp_unslash($_POST['filter_label'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            $taxonomy = isset($_POST['filter_taxonomy']) ? sanitize_key(wp_unslash($_POST['filter_taxonomy'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            $type = isset($_POST['filter_type']) ? sanitize_key(wp_unslash($_POST['filter_type'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+            if (empty($label) || empty($taxonomy) || !isset($this->get_supported_filter_types()[$type])) {
+                return __('Unable to save filter. Check your values and try again.', 'productmaster');
+            }
+
+            $filters[] = array(
+                'id' => uniqid('f_', true),
+                'label' => $label,
+                'taxonomy' => $taxonomy,
+                'type' => $type,
+            );
+
+            update_option(self::FILTER_OPTION_KEY, $filters, false);
+            return __('Filter added.', 'productmaster');
+        }
+
+        if ('delete_filter' === $action) {
+            $filter_id = isset($_POST['filter_id']) ? sanitize_text_field(wp_unslash($_POST['filter_id'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            $filters = array_values(
+                array_filter(
+                    $filters,
+                    function ($filter) use ($filter_id) {
+                        return isset($filter['id']) && $filter['id'] !== $filter_id;
+                    }
+                )
+            );
+            update_option(self::FILTER_OPTION_KEY, $filters, false);
+            return __('Filter deleted.', 'productmaster');
+        }
+
+        return '';
+    }
+
+    private function get_saved_taxonomy_filters()
+    {
+        $filters = get_option(self::FILTER_OPTION_KEY, array());
+        return is_array($filters) ? $filters : array();
+    }
+
+    private function get_taxonomy_options()
+    {
+        $options = array(
+            'product_cat' => __('Product Categories', 'productmaster'),
+        );
+
+        $attributes = wc_get_attribute_taxonomies();
+        foreach ($attributes as $attribute) {
+            $taxonomy = wc_attribute_taxonomy_name($attribute->attribute_name);
+            $options[$taxonomy] = sprintf(__('Attribute: %s', 'productmaster'), $attribute->attribute_label);
+        }
+
+        return $options;
+    }
+
+    private function get_supported_filter_types()
+    {
+        return array(
+            'checkboxes' => __('Checkboxes', 'productmaster'),
+            'image_boxes' => __('Image boxes', 'productmaster'),
+            'drop_down_selectors' => __('Drop down selectors', 'productmaster'),
+            'sliders' => __('Sliders', 'productmaster'),
+            'search_fields' => __('Search Fields', 'productmaster'),
+            'currently_selected_filters' => __('Currently Selected Filters', 'productmaster'),
+            'reset_button' => __('Reset Products Button', 'productmaster'),
+        );
+    }
+
+    private function render_single_filter_input($filter)
+    {
+        $param_key = 'pmf_' . $filter['id'];
+        $selected_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $terms = get_terms(
+            array(
+                'taxonomy' => $filter['taxonomy'],
+                'hide_empty' => true,
+            )
+        );
+
+        echo '<fieldset class="productmaster-filter-group">';
+        echo '<legend>' . esc_html($filter['label']) . '</legend>';
+
+        if ('checkboxes' === $filter['type'] || 'image_boxes' === $filter['type']) {
+            foreach ($terms as $term) {
+                $checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
+                $class = 'image_boxes' === $filter['type'] ? 'productmaster-image-box' : '';
+                echo '<label class="' . esc_attr($class) . '"><input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+            }
+        } elseif ('drop_down_selectors' === $filter['type']) {
+            echo '<select name="' . esc_attr($param_key) . '"><option value="">' . esc_html__('Any', 'productmaster') . '</option>';
+            foreach ($terms as $term) {
+                echo '<option value="' . esc_attr($term->slug) . '" ' . selected((string) $selected_value, $term->slug, false) . '>' . esc_html($term->name) . '</option>';
+            }
+            echo '</select>';
+        } elseif ('sliders' === $filter['type']) {
+            $min = isset($_GET['pmf_min_price']) ? wp_unslash($_GET['pmf_min_price']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $max = isset($_GET['pmf_max_price']) ? wp_unslash($_GET['pmf_max_price']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            echo '<label>' . esc_html__('Min Price', 'productmaster') . ' <input type="number" min="0" step="0.01" name="pmf_min_price" value="' . esc_attr((string) $min) . '" /></label>';
+            echo '<label>' . esc_html__('Max Price', 'productmaster') . ' <input type="number" min="0" step="0.01" name="pmf_max_price" value="' . esc_attr((string) $max) . '" /></label>';
+        } elseif ('search_fields' === $filter['type']) {
+            echo '<input type="search" name="' . esc_attr($param_key) . '" value="' . esc_attr((string) $selected_value) . '" placeholder="' . esc_attr__('Search products', 'productmaster') . '" />';
+        } elseif ('currently_selected_filters' === $filter['type']) {
+            $this->render_currently_selected_filters();
+        } elseif ('reset_button' === $filter['type']) {
+            $reset_url = remove_query_arg($this->get_filter_query_arg_keys());
+            echo '<a class="button" href="' . esc_url($reset_url) . '">' . esc_html__('Reset Products', 'productmaster') . '</a>';
+        }
+
+        echo '</fieldset>';
+    }
+
+    private function render_currently_selected_filters()
+    {
+        $selected = array();
+        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if (0 !== strpos((string) $key, 'pmf_')) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $selected[] = sanitize_text_field(implode(', ', wp_unslash($value)));
+            } else {
+                $selected[] = sanitize_text_field(wp_unslash($value));
+            }
+        }
+
+        if (empty($selected)) {
+            echo '<p>' . esc_html__('No filters selected.', 'productmaster') . '</p>';
+            return;
+        }
+
+        echo '<ul>';
+        foreach ($selected as $value) {
+            echo '<li>' . esc_html($value) . '</li>';
+        }
+        echo '</ul>';
+    }
+
+    private function get_filter_query_arg_keys()
+    {
+        $keys = array('pmf_min_price', 'pmf_max_price');
+        foreach ($this->get_saved_taxonomy_filters() as $filter) {
+            if (isset($filter['id'])) {
+                $keys[] = 'pmf_' . $filter['id'];
+            }
+        }
+
+        return $keys;
+    }
+
+    private function get_filter_types_without_taxonomy()
+    {
+        return array(
+            'currently_selected_filters' => true,
+            'reset_button' => true,
         );
     }
 }

@@ -169,16 +169,24 @@
     background: #fff;
 }
 
+.productmaster-term-toggle-textarea {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    padding: 8px;
+    background: #fff;
+}
+
 .productmaster-term-toggle-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 8px;
+    display: block;
 }
 
 .productmaster-term-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin-bottom: 6px;
 }
 
 .productmaster-hierarchical-parent {

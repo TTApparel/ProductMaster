@@ -997,7 +997,7 @@ class ProductMaster_Admin_Portal
         }
         echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-list">';
+        echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
         foreach ($taxonomy_terms as $term) {
             $selected = in_array($term->slug, $presentation['allowed_terms'], true);
             echo '<label class="productmaster-term-toggle">';
@@ -1005,7 +1005,7 @@ class ProductMaster_Admin_Portal
             echo '<span>' . esc_html($term->name) . '</span>';
             echo '</label>';
         }
-        echo '</div><p class="description">' . esc_html__('Toggle terms on/off to control exactly which values are available for this filter. Leave all off to include all terms.', 'productmaster') . '</p></td></tr>';
+        echo '</div></div><p class="description">' . esc_html__('Toggle terms on/off to control exactly which values are available for this filter. Leave all off to include all terms.', 'productmaster') . '</p></td></tr>';
         echo '<tr><th><label for="pm_custom_css">' . esc_html__('Custom CSS', 'productmaster') . '</label></th><td><textarea id="pm_custom_css" name="custom_css" rows="8" class="large-text code">' . esc_textarea($presentation['custom_css']) . '</textarea><p class="description">' . esc_html__('Use CSS declarations or full CSS. For full CSS selectors, use {{WRAPPER}} to target this filter instance.', 'productmaster') . '</p></td></tr>';
         echo '</tbody></table>';
         submit_button(__('Save Presentation', 'productmaster'));

@@ -42,6 +42,7 @@ Implemented:
 - Added a Manual Hierarchy Map field so users can define parent/child relationships when hierarchical mode is enabled but taxonomy terms do not include native parent assignments.
 - Hierarchical filter branches now stay open after refresh when a child value is selected, preserving context for active selections.
 - When Manual Hierarchy Map is provided, only mapped terms are rendered/accepted for that filter and Included taxonomy term toggles are ignored.
+- Included taxonomy term toggles are displayed in a scrollable textarea-style container with one term per line for easier administration on large taxonomies.
 
 ## Requirements
 

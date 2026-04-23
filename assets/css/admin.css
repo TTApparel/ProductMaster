@@ -182,11 +182,34 @@
     display: block;
 }
 
+.productmaster-term-toggle-header,
+.productmaster-term-toggle-row {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 8px;
+    align-items: center;
+}
+
+.productmaster-term-toggle-header {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
 .productmaster-term-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
     margin-bottom: 6px;
+}
+
+.productmaster-term-slug {
+    color: #50575e;
+}
+
+.productmaster-term-image-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .productmaster-hierarchical-parent {

@@ -43,4 +43,31 @@
                 $button.prop('disabled', false);
             });
     });
+
+    $(document).on('click', '.productmaster-select-image', function () {
+        var $button = $(this);
+        var $container = $button.closest('.productmaster-term-image-control');
+        var $input = $container.find('.productmaster-term-image-input');
+        var $label = $container.find('.productmaster-image-selected-label');
+
+        var frame = wp.media({
+            title: 'Select term image',
+            multiple: false,
+            library: {
+                type: 'image'
+            }
+        });
+
+        frame.on('select', function () {
+            var attachment = frame.state().get('selection').first().toJSON();
+            if (!attachment || !attachment.url) {
+                return;
+            }
+
+            $input.val(attachment.url);
+            $label.text('Image selected');
+        });
+
+        frame.open();
+    });
 })(jQuery);

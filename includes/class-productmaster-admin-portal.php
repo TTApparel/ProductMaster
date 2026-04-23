@@ -90,6 +90,8 @@ class ProductMaster_Admin_Portal
             true
         );
 
+        wp_enqueue_media();
+
         wp_localize_script(
             'productmaster-admin',
             'productmasterAdmin',
@@ -1030,12 +1032,44 @@ class ProductMaster_Admin_Portal
         echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
+        usort(
+            $taxonomy_terms,
+            function ($a, $b) use ($effective_allowed_terms) {
+                $a_selected = in_array($a->slug, $effective_allowed_terms, true);
+                $b_selected = in_array($b->slug, $effective_allowed_terms, true);
+                if ($a_selected !== $b_selected) {
+                    return $a_selected ? -1 : 1;
+                }
+
+                return strcmp($a->name, $b->name);
+            }
+        );
+
+        $is_image_box_filter = isset($filter['type']) && 'image_boxes' === $filter['type'];
+        echo '<div class="productmaster-term-toggle-header">';
+        echo '<span>' . esc_html__('Value', 'productmaster') . '</span>';
+        echo '<span>' . esc_html__('Slug', 'productmaster') . '</span>';
+        if ($is_image_box_filter) {
+            echo '<span>' . esc_html__('Image', 'productmaster') . '</span>';
+        }
+        echo '</div>';
         foreach ($taxonomy_terms as $term) {
             $selected = in_array($term->slug, $effective_allowed_terms, true);
+            $term_image = isset($presentation['term_images'][$term->slug]) ? $presentation['term_images'][$term->slug] : '';
+            echo '<div class="productmaster-term-toggle-row">';
             echo '<label class="productmaster-term-toggle">';
             echo '<input type="checkbox" name="allowed_terms[]" value="' . esc_attr($term->slug) . '" ' . checked($selected, true, false) . ' />';
             echo '<span>' . esc_html($term->name) . '</span>';
             echo '</label>';
+            echo '<code class="productmaster-term-slug">' . esc_html($term->slug) . '</code>';
+            if ($is_image_box_filter) {
+                echo '<div class="productmaster-term-image-control">';
+                echo '<input type="hidden" class="productmaster-term-image-input" name="term_images[' . esc_attr($term->slug) . ']" value="' . esc_attr($term_image) . '" />';
+                echo '<button type="button" class="button button-small productmaster-select-image">' . esc_html__('Select image', 'productmaster') . '</button>';
+                echo '<span class="productmaster-image-selected-label">' . esc_html(!empty($term_image) ? __('Image selected', 'productmaster') : __('No image', 'productmaster')) . '</span>';
+                echo '</div>';
+            }
+            echo '</div>';
         }
         echo '</div></div><p class="description">' . esc_html__('Toggle terms on/off to control exactly which values are available for this filter. Leave all off to include all terms.', 'productmaster') . '</p></td></tr>';
         echo '<tr><th><label for="pm_custom_css">' . esc_html__('Custom CSS', 'productmaster') . '</label></th><td><textarea id="pm_custom_css" name="custom_css" rows="8" class="large-text code">' . esc_textarea($presentation['custom_css']) . '</textarea><p class="description">' . esc_html__('Use CSS declarations or full CSS. For full CSS selectors, use {{WRAPPER}} to target this filter instance.', 'productmaster') . '</p></td></tr>';
@@ -1093,6 +1127,7 @@ class ProductMaster_Admin_Portal
             'hierarchy_map' => $hierarchy_map,
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
             'allowed_terms' => $allowed_terms,
+            'term_images' => isset($data['term_images']) && is_array($data['term_images']) ? $this->sanitize_term_images(wp_unslash($data['term_images'])) : $defaults['term_images'],
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
         );
     }
@@ -1111,6 +1146,7 @@ class ProductMaster_Admin_Portal
             'hierarchy_map' => array(),
             'checkbox_icon' => '☐',
             'allowed_terms' => array(),
+            'term_images' => array(),
             'custom_css' => '',
         );
     }
@@ -1389,5 +1425,23 @@ class ProductMaster_Admin_Portal
         }
 
         return array_values(array_unique(array_filter($terms)));
+    }
+
+    private function sanitize_term_images($term_images)
+    {
+        $clean = array();
+
+        foreach ((array) $term_images as $slug => $url) {
+            $clean_slug = sanitize_title((string) $slug);
+            $clean_url = esc_url_raw((string) $url);
+
+            if ('' === $clean_slug) {
+                continue;
+            }
+
+            $clean[$clean_slug] = $clean_url;
+        }
+
+        return $clean;
     }
 }

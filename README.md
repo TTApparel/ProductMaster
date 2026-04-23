@@ -45,6 +45,7 @@ Implemented:
 - Included taxonomy term toggles are displayed in a scrollable textarea-style container with one term per line for easier administration on large taxonomies.
 - When Manual Hierarchy Map is filled, Included taxonomy term toggles automatically sync to the mapped terms.
 - For dropdown filter type with Manual Hierarchy Map enabled, preview/front-end now show parent dropdown plus child dropdown grouped under mapped parents.
+- Included taxonomy term list now sorts selected items to the top, shows slug in a dedicated column, and (for Image boxes filters) includes a per-term “Select image” control.
 
 ## Requirements
 

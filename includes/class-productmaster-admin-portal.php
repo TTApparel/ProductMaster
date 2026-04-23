@@ -197,7 +197,7 @@ class ProductMaster_Admin_Portal
             echo '<table class="widefat striped"><thead><tr><th>' . esc_html__('Label', 'productmaster') . '</th><th>' . esc_html__('Taxonomy', 'productmaster') . '</th><th>' . esc_html__('Type', 'productmaster') . '</th><th>' . esc_html__('Shortcode', 'productmaster') . '</th><th>' . esc_html__('Action', 'productmaster') . '</th></tr></thead><tbody>';
             foreach ($filters as $filter) {
                 $type_label = $this->get_supported_filter_types()[$filter['type']] ?? $filter['type'];
-                $filter_shortcode = '[productmaster_filter id="' . $filter['id'] . '"]';
+                $filter_shortcode = '[productmaster_filter label="' . $filter['label'] . '"]';
                 $dynamic_shortcode = '[productmaster_filter_' . sanitize_key($filter['id']) . ']';
                 echo '<tr>';
                 echo '<td>' . esc_html($filter['label']) . '</td>';
@@ -526,14 +526,20 @@ class ProductMaster_Admin_Portal
         $atts = shortcode_atts(
             array(
                 'id' => '',
+                'label' => '',
             ),
             $atts,
             'productmaster_filter'
         );
 
+        $filter_id = sanitize_text_field($atts['id']);
+        if (empty($filter_id) && !empty($atts['label'])) {
+            $filter_id = $this->find_filter_id_by_label(sanitize_text_field($atts['label']));
+        }
+
         return $this->render_filters_shortcode_by_args(
             array(
-                'filter_id' => sanitize_text_field($atts['id']),
+                'filter_id' => $filter_id,
             )
         );
     }
@@ -697,8 +703,14 @@ class ProductMaster_Admin_Portal
                 return __('Unable to save filter. Check your values and try again.', 'productmaster');
             }
 
+            if ($this->label_exists($label, $filters)) {
+                return __('Filter label already exists. Use a unique label.', 'productmaster');
+            }
+
+            $filter_id = $this->generate_filter_id_from_label($label);
+
             $filters[] = array(
-                'id' => uniqid('f_', true),
+                'id' => $filter_id,
                 'label' => $label,
                 'taxonomy' => $taxonomy,
                 'type' => $type,
@@ -748,6 +760,29 @@ class ProductMaster_Admin_Portal
         if (!is_array($filters)) {
             return array();
         }
+
+        $normalized_filters = array();
+        $used_ids = array();
+        foreach ($filters as $filter) {
+            if (empty($filter['label'])) {
+                continue;
+            }
+
+            if (empty($filter['id']) || 0 === strpos((string) $filter['id'], 'f_')) {
+                $filter['id'] = $this->generate_filter_id_from_label($filter['label']);
+            }
+
+            $base_id = $filter['id'];
+            $counter = 2;
+            while (in_array($filter['id'], $used_ids, true)) {
+                $filter['id'] = $base_id . '-' . $counter;
+                $counter++;
+            }
+            $used_ids[] = $filter['id'];
+
+            $normalized_filters[] = $filter;
+        }
+        $filters = $normalized_filters;
 
         foreach ($filters as $index => $filter) {
             if (!isset($filter['presentation']) || !is_array($filter['presentation'])) {
@@ -1004,6 +1039,41 @@ class ProductMaster_Admin_Portal
         }
 
         return implode(';', $style_parts);
+    }
+
+    private function generate_filter_id_from_label($label)
+    {
+        return sanitize_key(sanitize_title($label));
+    }
+
+    private function label_exists($label, $filters)
+    {
+        foreach ($filters as $filter) {
+            if (!isset($filter['label'])) {
+                continue;
+            }
+
+            if (0 === strcasecmp($filter['label'], $label)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function find_filter_id_by_label($label)
+    {
+        foreach ($this->get_saved_taxonomy_filters() as $filter) {
+            if (!isset($filter['label'], $filter['id'])) {
+                continue;
+            }
+
+            if (0 === strcasecmp($filter['label'], $label)) {
+                return $filter['id'];
+            }
+        }
+
+        return '';
     }
 
     private function render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation)

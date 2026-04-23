@@ -26,8 +26,9 @@ Implemented:
   - Currently Selected Filters
   - Reset Products Button
 - Each created filter now has dedicated shortcode options:
-  - Generic: `[productmaster_filter id="FILTER_ID"]`
-  - Dynamic: `[productmaster_filter_FILTER_ID]` (sanitized ID)
+  - Generic: `[productmaster_filter label="FILTER_LABEL"]`
+  - Dynamic: `[productmaster_filter_FILTER_LABEL]` (sanitized label slug)
+- Filter labels are enforced as unique to prevent shortcode collisions.
 - Added per-filter **Edit** controls to customize filter presentation and preview output before placing shortcodes, including:
   - Theme/default colors vs custom colors
   - Font size and display text

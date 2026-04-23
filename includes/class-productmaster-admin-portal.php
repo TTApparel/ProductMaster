@@ -348,7 +348,13 @@ class ProductMaster_Admin_Portal
             usort(
                 $rows,
                 function ($a, $b) {
-                    return strcmp($a['size'], $b['size']);
+                    $size_comparison = $this->compare_size_labels($a['size'], $b['size']);
+
+                    if (0 !== $size_comparison) {
+                        return $size_comparison;
+                    }
+
+                    return $a['variation_id'] <=> $b['variation_id'];
                 }
             );
 
@@ -356,6 +362,57 @@ class ProductMaster_Admin_Portal
         }
 
         return $grouped;
+    }
+
+    private function compare_size_labels($left_size, $right_size)
+    {
+        $left_rank = $this->get_size_rank($left_size);
+        $right_rank = $this->get_size_rank($right_size);
+
+        if ($left_rank === $right_rank) {
+            return strcmp((string) $left_size, (string) $right_size);
+        }
+
+        return $left_rank <=> $right_rank;
+    }
+
+    private function get_size_rank($size_label)
+    {
+        $normalized_label = strtolower(trim((string) $size_label));
+        $normalized_label = str_replace(array('-', '_'), ' ', $normalized_label);
+        $normalized_label = preg_replace('/\s+/', ' ', $normalized_label);
+
+        $size_order = array(
+            'extra small' => 10,
+            'x small' => 10,
+            'xs' => 10,
+            'small' => 20,
+            's' => 20,
+            'medium' => 30,
+            'm' => 30,
+            'large' => 40,
+            'l' => 40,
+            'medium large' => 40,
+            'extra large' => 50,
+            'x large' => 50,
+            'xl' => 50,
+            '2x large' => 60,
+            '2xl' => 60,
+            'xxl' => 60,
+            '3x large' => 70,
+            '3xl' => 70,
+            'xxxl' => 70,
+            '4xl' => 80,
+            '4x large' => 80,
+            '5xl' => 90,
+            '5x large' => 90,
+        );
+
+        if (isset($size_order[$normalized_label])) {
+            return $size_order[$normalized_label];
+        }
+
+        return 999;
     }
 
     private function get_attribute_label($attributes, $attribute_keys)

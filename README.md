@@ -1,2 +1,76 @@
 # ProductMaster
-All around management plugin tool to quick view reviews, taxonomies, inventory and other data for relevant woocomerce products.
+
+ProductMaster is a WordPress plugin for WooCommerce stores that need a focused backend portal to manage apparel inventory visibility.
+
+## Current project status (v0.1.0)
+
+Implemented:
+
+- WordPress plugin bootstrap (`productmaster.php`) with localization support and version constants.
+- Admin menu page: **ProductMaster**.
+- Initial backend portal for WooCommerce admins (`manage_woocommerce`) that displays:
+  - All published variable products.
+  - A per-product toggle to reveal variation inventory.
+  - Variations grouped by color with hidden-by-default toggles per color.
+  - Size-specific cards in an 8-column grid, each showing SKU, stock status, inventory quantity, and a visual stock bar.
+- Basic admin styling for readability.
+
+## Requirements
+
+- WordPress 6.0+
+- PHP 7.4+
+- WooCommerce active
+
+## Installation (development)
+
+1. Place this project in your WordPress plugins directory.
+2. Activate **ProductMaster** in WordPress admin.
+3. Ensure products are created as variable products and use attributes for size/color as needed.
+4. Open **ProductMaster** from the WordPress admin sidebar.
+
+## Product direction / roadmap
+
+### 1) Elementor-integrated taxonomy filter tooling
+
+Goal:
+
+- Provide shortcode-powered taxonomy filters for product archive pages.
+- Support style customization to blend with active theme.
+- Integrate with product loops/grids for near real-time filtering UX.
+
+Planned work:
+
+- Shortcode API design (`[productmaster_filters ...]`).
+- Front-end filtering behavior and Elementor compatibility testing.
+- Admin configuration screen for visual style tokens.
+
+### 2) Product review import + moderation system
+
+Goal:
+
+- Support import and moderation of 1–5 star reviews tied to products.
+- Render reviews in a way that is SEO-friendly and supports better search visibility.
+
+Planned work:
+
+- Import adapters and validation flow.
+- Moderation queue in admin.
+- Structured-data friendly output patterns for single product pages.
+
+### 3) Visual review display builder
+
+Goal:
+
+- Add visual controls for layout and presentation of reviews on product pages.
+
+Planned work:
+
+- Template presets and style controls.
+- Placement configuration for WooCommerce single product hooks.
+- Consistency checks across responsive breakpoints.
+
+## Notes for contributors
+
+- Keep this README updated as each feature is added, changed, or removed.
+- Document new admin screens, shortcode options, hooks, and any data model changes.
+- For every release increment, update the “Current project status” and roadmap progress.

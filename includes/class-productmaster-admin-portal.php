@@ -638,6 +638,10 @@ class ProductMaster_Admin_Portal
             $param_key = 'pmf_' . $filter['id'];
             $raw_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $allowed_terms = isset($filter['presentation']['allowed_terms']) ? (array) $filter['presentation']['allowed_terms'] : array();
+            $manual_hierarchy_terms = $this->get_manual_hierarchy_allowed_terms($filter);
+            if (!empty($manual_hierarchy_terms)) {
+                $allowed_terms = $manual_hierarchy_terms;
+            }
 
             if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && is_array($raw_value) && !empty($raw_value)) {
                 $terms = array_map('sanitize_title', $raw_value);
@@ -989,7 +993,7 @@ class ProductMaster_Admin_Portal
         if (!$has_parent_terms) {
             echo esc_html__('No parent terms detected in this taxonomy. Use this map to define parent/child relationships.', 'productmaster');
         } else {
-            echo esc_html__('Optional override when you need custom parent/child groupings.', 'productmaster');
+            echo esc_html__('When set, only mapped terms are shown and Included taxonomy terms are ignored.', 'productmaster');
         }
         echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
@@ -1132,9 +1136,10 @@ class ProductMaster_Admin_Portal
         $terms_by_parent = array();
         $terms_by_slug = array();
         $has_native_parent_relationship = false;
+        $use_manual_hierarchy = !empty($presentation['hierarchy_map']) && is_array($presentation['hierarchy_map']);
 
         foreach ($terms as $term) {
-            if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
+            if (!$use_manual_hierarchy && !empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
                 continue;
             }
 
@@ -1150,8 +1155,11 @@ class ProductMaster_Admin_Portal
             $terms_by_parent[$parent_id][] = $term;
         }
 
-        if (!$has_native_parent_relationship && !empty($presentation['hierarchy_map']) && is_array($presentation['hierarchy_map'])) {
+        if ($use_manual_hierarchy) {
             $terms_by_parent = $this->build_terms_by_parent_from_manual_map($presentation['hierarchy_map'], $terms_by_slug);
+        } elseif (!$has_native_parent_relationship) {
+            // Leave as flat root list when no hierarchy data exists.
+            $terms_by_parent = array(0 => array_values($terms_by_slug));
         }
 
         $this->render_hierarchical_term_nodes($terms_by_parent, 0, $filter, $param_key, $selected_value, $presentation);
@@ -1254,7 +1262,6 @@ class ProductMaster_Admin_Portal
     private function build_terms_by_parent_from_manual_map($hierarchy_map, $terms_by_slug)
     {
         $terms_by_parent = array(0 => array());
-        $used_child_ids = array();
 
         foreach ($hierarchy_map as $parent_slug => $child_slugs) {
             if (empty($terms_by_slug[$parent_slug])) {
@@ -1276,29 +1283,26 @@ class ProductMaster_Admin_Portal
 
                 $child_term = $terms_by_slug[$child_slug];
                 $terms_by_parent[$parent_id][] = $child_term;
-                $used_child_ids[] = (int) $child_term->term_id;
-            }
-        }
-
-        foreach ($terms_by_slug as $term) {
-            $term_id = (int) $term->term_id;
-            if (in_array($term_id, $used_child_ids, true)) {
-                continue;
-            }
-
-            $is_existing_parent = false;
-            foreach ($terms_by_parent[0] as $root_term) {
-                if ((int) $root_term->term_id === $term_id) {
-                    $is_existing_parent = true;
-                    break;
-                }
-            }
-
-            if (!$is_existing_parent) {
-                $terms_by_parent[0][] = $term;
             }
         }
 
         return $terms_by_parent;
+    }
+
+    private function get_manual_hierarchy_allowed_terms($filter)
+    {
+        if (empty($filter['presentation']['hierarchy_map']) || !is_array($filter['presentation']['hierarchy_map'])) {
+            return array();
+        }
+
+        $terms = array();
+        foreach ($filter['presentation']['hierarchy_map'] as $parent => $children) {
+            $terms[] = sanitize_title((string) $parent);
+            foreach ((array) $children as $child) {
+                $terms[] = sanitize_title((string) $child);
+            }
+        }
+
+        return array_values(array_unique(array_filter($terms)));
     }
 }

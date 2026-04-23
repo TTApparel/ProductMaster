@@ -41,6 +41,7 @@ Implemented:
 - Legacy filter settings now auto-merge missing presentation keys (including `custom_css`) to prevent undefined index notices on shop pages.
 - Added a Manual Hierarchy Map field so users can define parent/child relationships when hierarchical mode is enabled but taxonomy terms do not include native parent assignments.
 - Hierarchical filter branches now stay open after refresh when a child value is selected, preserving context for active selections.
+- When Manual Hierarchy Map is provided, only mapped terms are rendered/accepted for that filter and Included taxonomy term toggles are ignored.
 
 ## Requirements
 

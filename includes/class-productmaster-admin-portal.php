@@ -1517,12 +1517,12 @@ class ProductMaster_Admin_Portal
                         $child_image = $this->resolve_term_image_url($child_term, $presentation);
                         echo '<label class="productmaster-image-child-label">';
                         echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';
+                        echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
                         if (!empty($child_image)) {
                             echo '<img src="' . esc_url($child_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';
                         } else {
                             echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($child_term->name, 0, 1)) . '</span>';
                         }
-                        echo '<span class="productmaster-image-child-name">' . esc_html($child_term->name) . '</span>';
                         echo '</label>';
                     }
                     echo '</div>';

@@ -127,22 +127,55 @@
 
 
 .productmaster-image-children-grid {
-    display: grid;
-    gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .productmaster-image-child-label {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
 }
 
-.productmaster-image-child-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
+.productmaster-image-child-checkbox {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.productmaster-image-child-label .productmaster-image-thumb {
+    border-color: #dcdcde;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.productmaster-image-child-checkbox:checked ~ .productmaster-image-thumb {
+    border: 2px solid #2271b1;
+    box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.15);
+}
+
+.productmaster-image-child-tag {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1d2327;
+    color: #fff;
+    font-size: 11px;
+    line-height: 1.2;
+    padding: 3px 6px;
+    border-radius: 3px;
     white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    z-index: 2;
+}
+
+.productmaster-image-child-label:hover .productmaster-image-child-tag,
+.productmaster-image-child-label:focus-within .productmaster-image-child-tag {
+    opacity: 1;
+    visibility: visible;
 }
 
 .productmaster-image-parent:hover .productmaster-image-children-menu {

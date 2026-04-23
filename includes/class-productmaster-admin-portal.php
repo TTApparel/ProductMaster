@@ -876,7 +876,7 @@ class ProductMaster_Admin_Portal
         $terms = get_terms(
             array(
                 'taxonomy' => $filter['taxonomy'],
-                'hide_empty' => true,
+                'hide_empty' => false,
             )
         );
         $presentation = isset($filter['presentation']) ? $filter['presentation'] : $this->get_default_presentation_settings();

@@ -14,6 +14,7 @@ Implemented:
   - A per-product toggle to reveal variation inventory.
   - Variations grouped by color with hidden-by-default toggles per color.
   - Size-specific cards in an 8-column grid, each showing SKU, stock status, inventory quantity, and a visual stock bar.
+  - Grid/card spacing tweaks to prevent overlap between size cards in dense catalogs.
 - Basic admin styling for readability.
 
 ## Requirements

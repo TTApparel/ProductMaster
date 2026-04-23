@@ -46,8 +46,10 @@
 
 .productmaster-size-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(140px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(8, minmax(160px, 160px));
+    column-gap: 12px;
+    row-gap: 12px;
+    justify-content: start;
     overflow-x: auto;
     padding-bottom: 6px;
 }
@@ -57,7 +59,9 @@
     border-radius: 6px;
     padding: 10px;
     background: #f6f7f7;
-    min-width: 140px;
+    min-width: 160px;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .productmaster-size-header {

@@ -104,12 +104,17 @@
 
 .productmaster-stock-controls {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 4px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .productmaster-stock-input {
     width: 90px;
+    max-width: 100%;
 }
 
 .productmaster-stock-feedback {

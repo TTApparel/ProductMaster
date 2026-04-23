@@ -45,6 +45,7 @@ class ProductMaster_Plugin
         add_action('plugins_loaded', array($this, 'load_textdomain'));
         add_action('admin_menu', array($this->admin_portal, 'register_menu'));
         add_action('admin_enqueue_scripts', array($this->admin_portal, 'enqueue_assets'));
+        add_action('wp_enqueue_scripts', array($this->admin_portal, 'enqueue_frontend_assets'));
         add_action('wp_ajax_productmaster_update_variation_stock', array($this->admin_portal, 'ajax_update_variation_stock'));
         add_shortcode('productmaster_filters', array($this->admin_portal, 'render_filters_shortcode'));
         add_shortcode('productmaster_filter', array($this->admin_portal, 'render_single_filter_shortcode'));

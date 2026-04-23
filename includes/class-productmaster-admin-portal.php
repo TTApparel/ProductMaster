@@ -103,6 +103,16 @@ class ProductMaster_Admin_Portal
         );
     }
 
+    public function enqueue_frontend_assets()
+    {
+        wp_enqueue_style(
+            'productmaster-frontend',
+            PRODUCTMASTER_URL . 'assets/css/frontend.css',
+            array(),
+            PRODUCTMASTER_VERSION
+        );
+    }
+
     public function render_inventory_page()
     {
         if (!current_user_can('manage_woocommerce')) {
@@ -842,7 +852,6 @@ class ProductMaster_Admin_Portal
         echo $this->build_custom_css_output($filter['id'], $presentation['custom_css']);
 
         echo '<fieldset class="' . esc_attr($wrapper_classes) . '" style="' . esc_attr($style) . '">';
-        echo '<legend style="font-size:' . esc_attr((string) $presentation['font_size']) . 'px;">' . esc_html($presentation['display_text']) . '</legend>';
 
         if ('checkboxes' === $filter['type'] || 'image_boxes' === $filter['type']) {
             if ('enabled' === $presentation['hierarchical_visual'] && is_taxonomy_hierarchical($filter['taxonomy'])) {

@@ -1,0 +1,57 @@
+.productmaster-filters-form {
+    display: grid;
+    gap: 12px;
+    margin: 14px 0;
+}
+
+.productmaster-filter-group {
+    border: 1px solid #dcdcde;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+.productmaster-image-box {
+    display: inline-block;
+    padding: 8px;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    margin-right: 8px;
+}
+
+.productmaster-checkbox-icon {
+    margin-right: 4px;
+    font-weight: 600;
+}
+
+.productmaster-hierarchical-parent {
+    margin-bottom: 8px;
+}
+
+.productmaster-hierarchical-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.productmaster-hierarchical-summary::-webkit-details-marker {
+    display: none;
+}
+
+.productmaster-hierarchical-marker {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.productmaster-hierarchical-children {
+    margin: 0;
+}
+
+.productmaster-hierarchical-children[open] > .productmaster-hierarchical-summary .productmaster-hierarchical-marker {
+    transform: rotate(90deg);
+}
+
+.productmaster-hierarchical-nested {
+    margin: 6px 0 0 20px;
+}

@@ -36,6 +36,7 @@ Implemented:
   - Checkbox icon customization
   - Include/exclude specific taxonomy terms
   - Per-filter Custom CSS box with preview visibility (`{{WRAPPER}}` selector placeholder supported)
+- Front-end filter styles are now enqueued to keep hierarchical indentation/toggles consistent between preview and rendered shortcodes.
 
 ## Requirements
 

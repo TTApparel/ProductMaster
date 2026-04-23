@@ -842,7 +842,7 @@ class ProductMaster_Admin_Portal
         echo '<legend style="font-size:' . esc_attr((string) $presentation['font_size']) . 'px;">' . esc_html($presentation['display_text']) . '</legend>';
 
         if ('checkboxes' === $filter['type'] || 'image_boxes' === $filter['type']) {
-            if ('enables' === $presentation['hierarchical_visual'] && is_taxonomy_hierarchical($filter['taxonomy'])) {
+            if ('enabled' === $presentation['hierarchical_visual'] && is_taxonomy_hierarchical($filter['taxonomy'])) {
                 $this->render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation);
             } else {
                 foreach ($terms as $term) {
@@ -855,7 +855,7 @@ class ProductMaster_Admin_Portal
                 }
             }
         } elseif ('drop_down_selectors' === $filter['type']) {
-            $extra_class = 'enables' === $presentation['hierarchical_visual'] ? 'productmaster-hierarchical-enabled' : '';
+            $extra_class = 'enabled' === $presentation['hierarchical_visual'] ? 'productmaster-hierarchical-enabled' : '';
             echo '<select class="' . esc_attr($extra_class) . '" name="' . esc_attr($param_key) . '"><option value="">' . esc_html__('Any', 'productmaster') . '</option>';
             foreach ($terms as $term) {
                 if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
@@ -951,7 +951,7 @@ class ProductMaster_Admin_Portal
         echo '<tr><th><label for="pm_bg_color">' . esc_html__('Background color', 'productmaster') . '</label></th><td><input id="pm_bg_color" name="bg_color" type="text" value="' . esc_attr($presentation['bg_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_text_color">' . esc_html__('Text color', 'productmaster') . '</label></th><td><input id="pm_text_color" name="text_color" type="text" value="' . esc_attr($presentation['text_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_accent_color">' . esc_html__('Accent color', 'productmaster') . '</label></th><td><input id="pm_accent_color" name="accent_color" type="text" value="' . esc_attr($presentation['accent_color']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_hierarchical_visual">' . esc_html__('Hierarchical', 'productmaster') . '</label></th><td><select id="pm_hierarchical_visual" name="hierarchical_visual"><option value="disabled" ' . selected('disabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Disabled', 'productmaster') . '</option><option value="enables" ' . selected('enables', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Enables', 'productmaster') . '</option></select></td></tr>';
+        echo '<tr><th><label for="pm_hierarchical_visual">' . esc_html__('Hierarchical', 'productmaster') . '</label></th><td><select id="pm_hierarchical_visual" name="hierarchical_visual"><option value="disabled" ' . selected('disabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Disabled', 'productmaster') . '</option><option value="enabled" ' . selected('enabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Enabled', 'productmaster') . '</option></select></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><select id="pm_allowed_terms" name="allowed_terms[]" multiple size="8">';
         foreach ($taxonomy_terms as $term) {
@@ -1078,41 +1078,47 @@ class ProductMaster_Admin_Portal
 
     private function render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation)
     {
-        $parents = array();
-        $children_map = array();
+        $terms_by_parent = array();
 
         foreach ($terms as $term) {
             if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
                 continue;
             }
 
-            if ((int) $term->parent === 0) {
-                $parents[] = $term;
-                continue;
+            $parent_id = (int) $term->parent;
+            if (!isset($terms_by_parent[$parent_id])) {
+                $terms_by_parent[$parent_id] = array();
             }
+            $terms_by_parent[$parent_id][] = $term;
+        }
 
-            if (!isset($children_map[$term->parent])) {
-                $children_map[$term->parent] = array();
-            }
-            $children_map[$term->parent][] = $term;
+        $this->render_hierarchical_term_nodes($terms_by_parent, 0, $filter, $param_key, $selected_value, $presentation);
+    }
+
+    private function render_hierarchical_term_nodes($terms_by_parent, $parent_id, $filter, $param_key, $selected_value, $presentation)
+    {
+        if (empty($terms_by_parent[$parent_id])) {
+            return;
         }
 
         $class = 'image_boxes' === $filter['type'] ? 'productmaster-image-box' : '';
 
-        foreach ($parents as $parent) {
-            $parent_checked = is_array($selected_value) && in_array($parent->slug, $selected_value, true);
+        foreach ($terms_by_parent[$parent_id] as $term) {
+            $term_id = (int) $term->term_id;
+            $term_checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
+            $has_children = !empty($terms_by_parent[$term_id]);
+
             echo '<div class="productmaster-hierarchical-parent">';
-            echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($parent->slug) . '" ' . checked($parent_checked, true, false) . ' /> ' . esc_html($parent->name) . '</label>';
-
-            if (!empty($children_map[$parent->term_id])) {
-                echo '<details class="productmaster-hierarchical-children"><summary>' . esc_html__('Show child options', 'productmaster') . '</summary>';
-                foreach ($children_map[$parent->term_id] as $child) {
-                    $child_checked = is_array($selected_value) && in_array($child->slug, $selected_value, true);
-                    echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child->slug) . '" ' . checked($child_checked, true, false) . ' /> ' . esc_html($child->name) . '</label>';
-                }
+            if ($has_children) {
+                echo '<details class="productmaster-hierarchical-children">';
+                echo '<summary class="productmaster-hierarchical-summary"><span class="productmaster-hierarchical-marker" aria-hidden="true">▸</span><label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label></summary>';
+                echo '<div class="productmaster-hierarchical-nested">';
+                $this->render_hierarchical_term_nodes($terms_by_parent, $term_id, $filter, $param_key, $selected_value, $presentation);
+                echo '</div>';
                 echo '</details>';
+            } else {
+                echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
             }
-
             echo '</div>';
         }
     }

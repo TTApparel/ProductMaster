@@ -173,6 +173,31 @@
     margin-bottom: 8px;
 }
 
+.productmaster-hierarchical-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.productmaster-hierarchical-summary::-webkit-details-marker {
+    display: none;
+}
+
+.productmaster-hierarchical-marker {
+    font-size: 12px;
+    line-height: 1;
+}
+
 .productmaster-hierarchical-children {
+    margin: 0;
+}
+
+.productmaster-hierarchical-children[open] > .productmaster-hierarchical-summary .productmaster-hierarchical-marker {
+    transform: rotate(90deg);
+}
+
+.productmaster-hierarchical-nested {
     margin: 6px 0 0 20px;
 }

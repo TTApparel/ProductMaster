@@ -32,7 +32,7 @@ Implemented:
 - Added per-filter **Edit** controls to customize filter presentation and preview output before placing shortcodes, including:
   - Theme/default colors vs custom colors
   - Font size and display text
-  - Hierarchical mode (`Disabled` / `Enables`) with parent-only display and child-category toggle support when enabled
+  - Hierarchical mode (`Disabled` / `Enabled`) with parent-only display and nested child-category toggles when enabled
   - Checkbox icon customization
   - Include/exclude specific taxonomy terms
 

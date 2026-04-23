@@ -1486,15 +1486,15 @@ class ProductMaster_Admin_Portal
                 echo '</label>';
 
                 if (!empty($child_slugs)) {
-                    echo '<div class="productmaster-image-children-menu">';
-                    echo '<div class="productmaster-image-children-header">' . esc_html($parent_term->name) . '</div>';
+                    echo '<div class="productmaster-image-children-menu" data-parent-slug="' . esc_attr($parent_slug) . '">';
+                    echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($parent_slug) . '" /> ' . esc_html($parent_term->name) . '</label>';
                     foreach ((array) $child_slugs as $child_slug) {
                         if (!isset($term_by_slug[$child_slug])) {
                             continue;
                         }
                         $child_term = $term_by_slug[$child_slug];
                         $child_checked = in_array($child_slug, $selected_values, true);
-                        echo '<label><input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' /> ' . esc_html($child_term->name) . '</label>';
+                        echo '<label><input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' /> ' . esc_html($child_term->name) . '</label>';
                     }
                     echo '</div>';
                 }

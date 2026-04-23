@@ -25,6 +25,15 @@ Implemented:
   - Search Fields
   - Currently Selected Filters
   - Reset Products Button
+- Each created filter now has dedicated shortcode options:
+  - Generic: `[productmaster_filter id="FILTER_ID"]`
+  - Dynamic: `[productmaster_filter_FILTER_ID]` (sanitized ID)
+- Added per-filter **Edit** controls to customize filter presentation and preview output before placing shortcodes, including:
+  - Theme/default colors vs custom colors
+  - Font size and display text
+  - Hierarchical category visual style options
+  - Checkbox icon customization
+  - Include/exclude specific taxonomy terms
 
 ## Requirements
 

@@ -25,6 +25,7 @@ Implemented:
   - Search Fields
   - Currently Selected Filters
   - Reset Products Button
+- Front-end filters now auto-apply in real time on selection/input change (no manual “Filter Products” submit button required).
 - Each created filter now has dedicated shortcode options:
   - Generic: `[productmaster_filter label="FILTER_LABEL"]`
   - Dynamic: `[productmaster_filter_FILTER_LABEL]` (sanitized label slug)
@@ -37,6 +38,7 @@ Implemented:
   - Include/exclude specific taxonomy terms
   - Per-filter Custom CSS box with preview visibility (`{{WRAPPER}}` selector placeholder supported)
 - Front-end filter styles are now enqueued to keep hierarchical indentation/toggles consistent between preview and rendered shortcodes.
+- Legacy filter settings now auto-merge missing presentation keys (including `custom_css`) to prevent undefined index notices on shop pages.
 
 ## Requirements
 

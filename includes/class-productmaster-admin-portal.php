@@ -111,6 +111,14 @@ class ProductMaster_Admin_Portal
             array(),
             PRODUCTMASTER_VERSION
         );
+
+        wp_enqueue_script(
+            'productmaster-frontend',
+            PRODUCTMASTER_URL . 'assets/js/frontend.js',
+            array(),
+            PRODUCTMASTER_VERSION,
+            true
+        );
     }
 
     public function render_inventory_page()
@@ -602,7 +610,6 @@ class ProductMaster_Admin_Portal
         foreach ($filters as $filter) {
             $this->render_single_filter_input($filter);
         }
-        echo '<button type="submit">' . esc_html__('Filter Products', 'productmaster') . '</button>';
 
         echo '</form>';
         return ob_get_clean();
@@ -797,7 +804,13 @@ class ProductMaster_Admin_Portal
         foreach ($filters as $index => $filter) {
             if (!isset($filter['presentation']) || !is_array($filter['presentation'])) {
                 $filters[$index]['presentation'] = $this->get_default_presentation_settings();
+                continue;
             }
+
+            $filters[$index]['presentation'] = array_merge(
+                $this->get_default_presentation_settings(),
+                $filter['presentation']
+            );
         }
 
         return $filters;
@@ -849,7 +862,7 @@ class ProductMaster_Admin_Portal
             $wrapper_classes .= ' productmaster-filter-custom';
         }
 
-        echo $this->build_custom_css_output($filter['id'], $presentation['custom_css']);
+        echo $this->build_custom_css_output($filter['id'], $presentation['custom_css'] ?? '');
 
         echo '<fieldset class="' . esc_attr($wrapper_classes) . '" style="' . esc_attr($style) . '">';
 

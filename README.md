@@ -10,6 +10,7 @@ Implemented:
 - Admin menu page: **ProductMaster**.
 - Initial backend portal for WooCommerce admins (`manage_woocommerce`) that displays:
   - All published variable products.
+  - Pagination (20 products per page) to keep load times manageable for large catalogs.
   - A per-product toggle to reveal variation inventory.
   - Variations grouped by color with hidden-by-default toggles per color.
   - Size-specific cards in an 8-column grid, each showing SKU, stock status, inventory quantity, and a visual stock bar.

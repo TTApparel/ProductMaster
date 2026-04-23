@@ -7,6 +7,7 @@ if (!defined('ABSPATH')) {
 class ProductMaster_Admin_Portal
 {
     const PAGE_SLUG = 'productmaster-portal';
+    const PER_PAGE = 20;
 
     public function register_menu()
     {
@@ -46,7 +47,10 @@ class ProductMaster_Admin_Portal
             return;
         }
 
-        $products = $this->get_variable_products();
+        $current_page = $this->get_current_page();
+        $query_result = $this->get_variable_products($current_page);
+        $products = $query_result['products'];
+        $total_pages = $query_result['total_pages'];
 
         echo '<div class="wrap productmaster-wrap">';
         echo '<h1>' . esc_html__('ProductMaster Inventory Portal', 'productmaster') . '</h1>';
@@ -62,30 +66,36 @@ class ProductMaster_Admin_Portal
             $this->render_product_card($product);
         }
 
+        $this->render_pagination($current_page, $total_pages);
+
         echo '</div>';
     }
 
-    private function get_variable_products()
+    private function get_variable_products($page)
     {
-        $product_ids = wc_get_products(
+        $result = wc_get_products(
             array(
                 'status' => array('publish'),
-                'limit' => 200,
-                'return' => 'ids',
+                'limit' => self::PER_PAGE,
+                'page' => $page,
+                'paginate' => true,
+                'return' => 'objects',
                 'orderby' => 'title',
                 'order' => 'ASC',
+                'type' => 'variable',
             )
         );
 
-        if (empty($product_ids)) {
-            return array();
+        if (!isset($result->products) || empty($result->products)) {
+            return array(
+                'products' => array(),
+                'total_pages' => 0,
+            );
         }
 
         $products = array();
 
-        foreach ($product_ids as $product_id) {
-            $product = wc_get_product($product_id);
-
+        foreach ($result->products as $product) {
             if (!$product instanceof WC_Product) {
                 continue;
             }
@@ -97,7 +107,10 @@ class ProductMaster_Admin_Portal
             $products[] = $product;
         }
 
-        return $products;
+        return array(
+            'products' => $products,
+            'total_pages' => isset($result->max_num_pages) ? (int) $result->max_num_pages : 0,
+        );
     }
 
     private function render_product_card($product)
@@ -237,5 +250,34 @@ class ProductMaster_Admin_Portal
         }
 
         return (int) round(($qty / 50) * 100);
+    }
+
+    private function get_current_page()
+    {
+        $page = isset($_GET['pm_page']) ? absint($_GET['pm_page']) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        return max(1, $page);
+    }
+
+    private function render_pagination($current_page, $total_pages)
+    {
+        if ($total_pages <= 1) {
+            return;
+        }
+
+        $base_url = add_query_arg(
+            array(
+                'page' => self::PAGE_SLUG,
+            ),
+            admin_url('admin.php')
+        );
+
+        $prev_page = max(1, $current_page - 1);
+        $next_page = min($total_pages, $current_page + 1);
+
+        echo '<nav class="productmaster-pagination" aria-label="' . esc_attr__('Product pagination', 'productmaster') . '">';
+        echo '<a class="button" href="' . esc_url(add_query_arg('pm_page', $prev_page, $base_url)) . '">' . esc_html__('Previous', 'productmaster') . '</a>';
+        echo '<span>' . sprintf(esc_html__('Page %1$d of %2$d', 'productmaster'), (int) $current_page, (int) $total_pages) . '</span>';
+        echo '<a class="button" href="' . esc_url(add_query_arg('pm_page', $next_page, $base_url)) . '">' . esc_html__('Next', 'productmaster') . '</a>';
+        echo '</nav>';
     }
 }

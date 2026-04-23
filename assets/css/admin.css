@@ -93,3 +93,10 @@
     margin: 8px 0 0;
     font-weight: 600;
 }
+
+.productmaster-pagination {
+    margin: 20px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}

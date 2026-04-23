@@ -113,8 +113,16 @@
 }
 
 .productmaster-image-children-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-weight: 600;
     margin-bottom: 6px;
+    cursor: pointer;
+}
+
+.productmaster-image-children-header input[type="checkbox"] {
+    margin: 0;
 }
 
 .productmaster-image-parent:hover .productmaster-image-children-menu {

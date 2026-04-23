@@ -34,39 +34,44 @@
     color: #1d2327;
 }
 
-.productmaster-size-group {
+.productmaster-color-group {
     margin-top: 16px;
 }
 
-.productmaster-size-group h3 {
-    margin: 0 0 10px;
+.productmaster-color-group > summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
 
-.productmaster-color-grid {
+.productmaster-size-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(8, minmax(140px, 1fr));
     gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
 }
 
-.productmaster-color-card {
+.productmaster-size-card {
     border: 1px solid #dcdcde;
     border-radius: 6px;
     padding: 10px;
     background: #f6f7f7;
+    min-width: 140px;
 }
 
-.productmaster-color-header {
+.productmaster-size-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
 }
 
-.productmaster-color-name {
+.productmaster-size-name {
     font-weight: 600;
 }
 
-.productmaster-color-meta {
+.productmaster-size-meta {
     margin: 6px 0 8px;
     color: #50575e;
 }

@@ -103,7 +103,7 @@ class ProductMaster_Admin_Portal
     private function render_product_card($product)
     {
         $variation_ids = $product->get_children();
-        $grouped_inventory = $this->group_variations_by_size($variation_ids);
+        $grouped_inventory = $this->group_variations_by_color($variation_ids);
 
         echo '<section class="productmaster-card">';
         echo '<h2><a href="' . esc_url(get_edit_post_link($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></h2>';
@@ -116,25 +116,25 @@ class ProductMaster_Admin_Portal
         }
 
         echo '<details class="productmaster-variations-toggle">';
-        echo '<summary>' . esc_html__('View variations by size and color', 'productmaster') . '</summary>';
+        echo '<summary>' . esc_html__('View variations by color', 'productmaster') . '</summary>';
 
-        foreach ($grouped_inventory as $size => $color_rows) {
-            echo '<div class="productmaster-size-group">';
-            echo '<h3>' . sprintf(esc_html__('Size: %s', 'productmaster'), esc_html($size)) . '</h3>';
-            echo '<div class="productmaster-color-grid">';
+        foreach ($grouped_inventory as $color => $size_rows) {
+            echo '<details class="productmaster-color-group">';
+            echo '<summary>' . sprintf(esc_html__('Color: %s', 'productmaster'), esc_html($color)) . '</summary>';
+            echo '<div class="productmaster-size-grid">';
 
-            foreach ($color_rows as $row) {
+            foreach ($size_rows as $row) {
                 $stock_status = wc_get_product_stock_status_options()[$row['stock_status']] ?? $row['stock_status'];
                 $progress = $this->calculate_stock_progress($row['qty']);
                 $inventory_label = $this->format_stock_qty($row['qty'], $row['managing_stock']);
 
-                echo '<article class="productmaster-color-card">';
-                echo '<div class="productmaster-color-header">';
-                echo '<span class="productmaster-color-name">' . esc_html($row['color']) . '</span>';
+                echo '<article class="productmaster-size-card">';
+                echo '<div class="productmaster-size-header">';
+                echo '<span class="productmaster-size-name">' . esc_html($row['size']) . '</span>';
                 echo '<a href="' . esc_url(get_edit_post_link($row['variation_id'])) . '">#' . esc_html((string) $row['variation_id']) . '</a>';
                 echo '</div>';
-                echo '<p class="productmaster-color-meta">' . esc_html__('SKU:', 'productmaster') . ' ' . esc_html($row['sku']) . ' · ' . esc_html($stock_status) . '</p>';
-                echo '<div class="productmaster-stock-track" role="img" aria-label="' . esc_attr(sprintf(__('Inventory level for %1$s size %2$s', 'productmaster'), $row['color'], $size)) . '">';
+                echo '<p class="productmaster-size-meta">' . esc_html__('SKU:', 'productmaster') . ' ' . esc_html($row['sku']) . ' · ' . esc_html($stock_status) . '</p>';
+                echo '<div class="productmaster-stock-track" role="img" aria-label="' . esc_attr(sprintf(__('Inventory level for color %1$s size %2$s', 'productmaster'), $color, $row['size'])) . '">';
                 echo '<span class="productmaster-stock-fill" style="width:' . esc_attr((string) $progress) . '%;"></span>';
                 echo '</div>';
                 echo '<p class="productmaster-stock-qty">' . esc_html($inventory_label) . '</p>';
@@ -142,14 +142,14 @@ class ProductMaster_Admin_Portal
             }
 
             echo '</div>';
-            echo '</div>';
+            echo '</details>';
         }
 
         echo '</details>';
         echo '</section>';
     }
 
-    private function group_variations_by_size($variation_ids)
+    private function group_variations_by_color($variation_ids)
     {
         $grouped = array();
 
@@ -164,13 +164,13 @@ class ProductMaster_Admin_Portal
             $size = $this->get_attribute_label($attributes, array('pa_size', 'size'));
             $color = $this->get_attribute_label($attributes, array('pa_color', 'color'));
 
-            if (!isset($grouped[$size])) {
-                $grouped[$size] = array();
+            if (!isset($grouped[$color])) {
+                $grouped[$color] = array();
             }
 
-            $grouped[$size][] = array(
+            $grouped[$color][] = array(
                 'variation_id' => $variation->get_id(),
-                'color' => $color,
+                'size' => $size,
                 'sku' => $variation->get_sku() ?: '—',
                 'stock_status' => $variation->get_stock_status(),
                 'qty' => $variation->get_stock_quantity(),
@@ -180,15 +180,15 @@ class ProductMaster_Admin_Portal
 
         ksort($grouped);
 
-        foreach ($grouped as $size => $rows) {
+        foreach ($grouped as $color => $rows) {
             usort(
                 $rows,
                 function ($a, $b) {
-                    return strcmp($a['color'], $b['color']);
+                    return strcmp($a['size'], $b['size']);
                 }
             );
 
-            $grouped[$size] = $rows;
+            $grouped[$color] = $rows;
         }
 
         return $grouped;

@@ -11,8 +11,8 @@ Implemented:
 - Initial backend portal for WooCommerce admins (`manage_woocommerce`) that displays:
   - All published variable products.
   - A per-product toggle to reveal variation inventory.
-  - Variations grouped by size with color-specific cards.
-  - SKU, stock status, and inventory quantity with a visual stock bar per color variation.
+  - Variations grouped by color with hidden-by-default toggles per color.
+  - Size-specific cards in an 8-column grid, each showing SKU, stock status, inventory quantity, and a visual stock bar.
 - Basic admin styling for readability.
 
 ## Requirements

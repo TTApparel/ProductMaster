@@ -671,6 +671,25 @@ class ProductMaster_Admin_Portal
                 );
             }
 
+            if ('drop_down_selectors' === $filter['type'] && empty($raw_value)) {
+                $parent_value = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $child_value = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $dropdown_terms = array_filter(array($parent_value, $child_value));
+
+                if (!empty($allowed_terms)) {
+                    $dropdown_terms = array_values(array_intersect($dropdown_terms, $allowed_terms));
+                }
+
+                if (!empty($dropdown_terms)) {
+                    $tax_query[] = array(
+                        'taxonomy' => $filter['taxonomy'],
+                        'field' => 'slug',
+                        'terms' => $dropdown_terms,
+                        'operator' => 'IN',
+                    );
+                }
+            }
+
             if ('search_fields' === $filter['type'] && !empty($raw_value)) {
                 $query->set('s', sanitize_text_field((string) $raw_value));
             }
@@ -885,14 +904,19 @@ class ProductMaster_Admin_Portal
             }
         } elseif ('drop_down_selectors' === $filter['type']) {
             $extra_class = 'enabled' === $presentation['hierarchical_visual'] ? 'productmaster-hierarchical-enabled' : '';
-            echo '<select class="' . esc_attr($extra_class) . '" name="' . esc_attr($param_key) . '"><option value="">' . esc_html__('Any', 'productmaster') . '</option>';
-            foreach ($terms as $term) {
-                if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
-                    continue;
+            $manual_hierarchy = isset($presentation['hierarchy_map']) ? (array) $presentation['hierarchy_map'] : array();
+            if ('enabled' === $presentation['hierarchical_visual'] && !empty($manual_hierarchy)) {
+                $this->render_hierarchical_dropdown_selects($manual_hierarchy, $terms, $param_key);
+            } else {
+                echo '<select class="' . esc_attr($extra_class) . '" name="' . esc_attr($param_key) . '"><option value="">' . esc_html__('Any', 'productmaster') . '</option>';
+                foreach ($terms as $term) {
+                    if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
+                        continue;
+                    }
+                    echo '<option value="' . esc_attr($term->slug) . '" ' . selected((string) $selected_value, $term->slug, false) . '>' . esc_html($term->name) . '</option>';
                 }
-                echo '<option value="' . esc_attr($term->slug) . '" ' . selected((string) $selected_value, $term->slug, false) . '>' . esc_html($term->name) . '</option>';
+                echo '</select>';
             }
-            echo '</select>';
         } elseif ('sliders' === $filter['type']) {
             $min = isset($_GET['pmf_min_price']) ? wp_unslash($_GET['pmf_min_price']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $max = isset($_GET['pmf_max_price']) ? wp_unslash($_GET['pmf_max_price']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -943,6 +967,8 @@ class ProductMaster_Admin_Portal
         foreach ($this->get_saved_taxonomy_filters() as $filter) {
             if (isset($filter['id'])) {
                 $keys[] = 'pmf_' . $filter['id'];
+                $keys[] = 'pmf_' . $filter['id'] . '_parent';
+                $keys[] = 'pmf_' . $filter['id'] . '_child';
             }
         }
 
@@ -1309,6 +1335,47 @@ class ProductMaster_Admin_Portal
         }
 
         return $this->extract_hierarchy_terms($filter['presentation']['hierarchy_map']);
+    }
+
+    private function render_hierarchical_dropdown_selects($manual_hierarchy, $terms, $param_key)
+    {
+        $selected_parent = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $selected_child = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+        $term_labels = array();
+        foreach ($terms as $term) {
+            $term_labels[$term->slug] = $term->name;
+        }
+
+        echo '<div class="productmaster-hierarchical-dropdowns">';
+        echo '<label>' . esc_html__('Parent', 'productmaster') . ' <select name="' . esc_attr($param_key . '_parent') . '"><option value="">' . esc_html__('Any parent', 'productmaster') . '</option>';
+        foreach ($manual_hierarchy as $parent_slug => $children) {
+            if (!isset($term_labels[$parent_slug])) {
+                continue;
+            }
+
+            echo '<option value="' . esc_attr($parent_slug) . '" ' . selected($selected_parent, $parent_slug, false) . '>' . esc_html($term_labels[$parent_slug]) . '</option>';
+        }
+        echo '</select></label>';
+
+        echo '<label>' . esc_html__('Child', 'productmaster') . ' <select name="' . esc_attr($param_key . '_child') . '"><option value="">' . esc_html__('Any child', 'productmaster') . '</option>';
+        foreach ($manual_hierarchy as $parent_slug => $children) {
+            if (!isset($term_labels[$parent_slug])) {
+                continue;
+            }
+
+            echo '<optgroup label="' . esc_attr($term_labels[$parent_slug]) . '">';
+            foreach ((array) $children as $child_slug) {
+                if (!isset($term_labels[$child_slug])) {
+                    continue;
+                }
+
+                echo '<option value="' . esc_attr($child_slug) . '" ' . selected($selected_child, $child_slug, false) . '>' . esc_html($term_labels[$child_slug]) . '</option>';
+            }
+            echo '</optgroup>';
+        }
+        echo '</select></label>';
+        echo '</div>';
     }
 
     private function extract_hierarchy_terms($hierarchy_map)

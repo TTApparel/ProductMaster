@@ -993,12 +993,15 @@ class ProductMaster_Admin_Portal
         }
         echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><select id="pm_allowed_terms" name="allowed_terms[]" multiple size="8">';
+        echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-list">';
         foreach ($taxonomy_terms as $term) {
             $selected = in_array($term->slug, $presentation['allowed_terms'], true);
-            echo '<option value="' . esc_attr($term->slug) . '" ' . selected($selected, true, false) . '>' . esc_html($term->name) . '</option>';
+            echo '<label class="productmaster-term-toggle">';
+            echo '<input type="checkbox" name="allowed_terms[]" value="' . esc_attr($term->slug) . '" ' . checked($selected, true, false) . ' />';
+            echo '<span>' . esc_html($term->name) . '</span>';
+            echo '</label>';
         }
-        echo '</select><p class="description">' . esc_html__('Leave empty to include all taxonomy terms.', 'productmaster') . '</p></td></tr>';
+        echo '</div><p class="description">' . esc_html__('Toggle terms on/off to control exactly which values are available for this filter. Leave all off to include all terms.', 'productmaster') . '</p></td></tr>';
         echo '<tr><th><label for="pm_custom_css">' . esc_html__('Custom CSS', 'productmaster') . '</label></th><td><textarea id="pm_custom_css" name="custom_css" rows="8" class="large-text code">' . esc_textarea($presentation['custom_css']) . '</textarea><p class="description">' . esc_html__('Use CSS declarations or full CSS. For full CSS selectors, use {{WRAPPER}} to target this filter instance.', 'productmaster') . '</p></td></tr>';
         echo '</tbody></table>';
         submit_button(__('Save Presentation', 'productmaster'));
@@ -1166,10 +1169,12 @@ class ProductMaster_Admin_Portal
             $term_id = (int) $term->term_id;
             $term_checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
             $has_children = !empty($terms_by_parent[$term_id]);
+            $branch_has_selected_child = $this->branch_has_selected_value($terms_by_parent, $term_id, $selected_value);
+            $open_attr = ($term_checked || $branch_has_selected_child) ? ' open' : '';
 
             echo '<div class="productmaster-hierarchical-parent">';
             if ($has_children) {
-                echo '<details class="productmaster-hierarchical-children">';
+                echo '<details class="productmaster-hierarchical-children"' . $open_attr . '>';
                 echo '<summary class="productmaster-hierarchical-summary"><span class="productmaster-hierarchical-marker" aria-hidden="true">▸</span><label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label></summary>';
                 echo '<div class="productmaster-hierarchical-nested">';
                 $this->render_hierarchical_term_nodes($terms_by_parent, $term_id, $filter, $param_key, $selected_value, $presentation);
@@ -1180,6 +1185,25 @@ class ProductMaster_Admin_Portal
             }
             echo '</div>';
         }
+    }
+
+    private function branch_has_selected_value($terms_by_parent, $parent_id, $selected_value)
+    {
+        if (!is_array($selected_value) || empty($terms_by_parent[$parent_id])) {
+            return false;
+        }
+
+        foreach ($terms_by_parent[$parent_id] as $child_term) {
+            if (in_array($child_term->slug, $selected_value, true)) {
+                return true;
+            }
+
+            if ($this->branch_has_selected_value($terms_by_parent, (int) $child_term->term_id, $selected_value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function build_custom_css_output($filter_id, $custom_css)

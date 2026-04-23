@@ -169,6 +169,18 @@
     background: #fff;
 }
 
+.productmaster-term-toggle-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.productmaster-term-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .productmaster-hierarchical-parent {
     margin-bottom: 8px;
 }

@@ -35,11 +35,12 @@ Implemented:
   - Font size and display text
   - Hierarchical mode (`Disabled` / `Enabled`) with parent-only display and nested child-category toggles when enabled
   - Checkbox icon customization
-  - Include/exclude specific taxonomy terms
+  - Include/exclude specific taxonomy terms via per-term toggle controls
   - Per-filter Custom CSS box with preview visibility (`{{WRAPPER}}` selector placeholder supported)
 - Front-end filter styles are now enqueued to keep hierarchical indentation/toggles consistent between preview and rendered shortcodes.
 - Legacy filter settings now auto-merge missing presentation keys (including `custom_css`) to prevent undefined index notices on shop pages.
 - Added a Manual Hierarchy Map field so users can define parent/child relationships when hierarchical mode is enabled but taxonomy terms do not include native parent assignments.
+- Hierarchical filter branches now stay open after refresh when a child value is selected, preserving context for active selections.
 
 ## Requirements
 

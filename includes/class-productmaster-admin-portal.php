@@ -609,85 +609,12 @@ class ProductMaster_Admin_Portal
 
         ob_start();
         echo '<form class="productmaster-filters-form" method="get">';
-        echo '<input type="hidden" name="pmf_state" value="" />';
         foreach ($filters as $filter) {
             $this->render_single_filter_input($filter);
         }
 
         echo '</form>';
         return ob_get_clean();
-    }
-
-    private function get_filter_request_data()
-    {
-        static $cached = null;
-        if (null !== $cached) {
-            return $cached;
-        }
-
-        $cached = array();
-        $state_raw = isset($_GET['pmf_state']) ? (string) wp_unslash($_GET['pmf_state']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        if ('' === $state_raw) {
-            return $cached;
-        }
-
-        $normalized = strtr($state_raw, '-_', '+/');
-        $padding = strlen($normalized) % 4;
-        if (0 !== $padding) {
-            $normalized .= str_repeat('=', 4 - $padding);
-        }
-
-        $decoded_json = base64_decode($normalized, true);
-        if (false === $decoded_json) {
-            return $cached;
-        }
-
-        $decoded = json_decode($decoded_json, true);
-        if (!is_array($decoded)) {
-            return $cached;
-        }
-
-        foreach ($decoded as $key => $value) {
-            $sanitized_key = sanitize_key((string) $key);
-            if (0 !== strpos($sanitized_key, 'pmf_')) {
-                continue;
-            }
-
-            if (is_array($value)) {
-                $cached[$sanitized_key] = array_values(
-                    array_filter(
-                        array_map(
-                            function ($item) {
-                                return sanitize_text_field((string) $item);
-                            },
-                            $value
-                        ),
-                        function ($item) {
-                            return '' !== $item;
-                        }
-                    )
-                );
-            } else {
-                $cached[$sanitized_key] = sanitize_text_field((string) $value);
-            }
-        }
-
-        return $cached;
-    }
-
-    private function get_filter_request_value($key, $default = null)
-    {
-        $key = sanitize_key((string) $key);
-        $state_data = $this->get_filter_request_data();
-        if (isset($state_data[$key])) {
-            return $state_data[$key];
-        }
-
-        if (isset($_GET[$key])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            return wp_unslash($_GET[$key]); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        }
-
-        return $default;
     }
 
     private function get_filter_value_match_operator($filter)
@@ -720,7 +647,7 @@ class ProductMaster_Admin_Portal
 
         foreach ($filters as $filter) {
             $param_key = 'pmf_' . $filter['id'];
-            $raw_value = $this->get_filter_request_value($param_key, null);
+            $raw_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $allowed_terms = isset($filter['presentation']['allowed_terms']) ? (array) $filter['presentation']['allowed_terms'] : array();
             $manual_hierarchy_terms = $this->get_manual_hierarchy_allowed_terms($filter);
             if (!empty($manual_hierarchy_terms)) {
@@ -756,8 +683,8 @@ class ProductMaster_Admin_Portal
             }
 
             if ('drop_down_selectors' === $filter['type'] && empty($raw_value)) {
-                $parent_value = sanitize_title((string) $this->get_filter_request_value($param_key . '_parent', ''));
-                $child_value = sanitize_title((string) $this->get_filter_request_value($param_key . '_child', ''));
+                $parent_value = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $child_value = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $dropdown_terms = array_filter(array($parent_value, $child_value));
 
                 if (!empty($allowed_terms)) {
@@ -779,10 +706,8 @@ class ProductMaster_Admin_Portal
             }
         }
 
-        $min_price_raw = $this->get_filter_request_value('pmf_min_price', null);
-        $max_price_raw = $this->get_filter_request_value('pmf_max_price', null);
-        $min_price = null !== $min_price_raw && '' !== $min_price_raw ? wc_format_decimal($min_price_raw) : null;
-        $max_price = null !== $max_price_raw && '' !== $max_price_raw ? wc_format_decimal($max_price_raw) : null;
+        $min_price = isset($_GET['pmf_min_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_min_price'])) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $max_price = isset($_GET['pmf_max_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_max_price'])) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
         if (null !== $min_price || null !== $max_price) {
             $meta_query[] = array(
@@ -960,7 +885,7 @@ class ProductMaster_Admin_Portal
     private function render_single_filter_input($filter)
     {
         $param_key = 'pmf_' . $filter['id'];
-        $selected_value = $this->get_filter_request_value($param_key, null);
+        $selected_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $terms = get_terms(
             array(
                 'taxonomy' => $filter['taxonomy'],
@@ -1010,8 +935,8 @@ class ProductMaster_Admin_Portal
                 echo '</select>';
             }
         } elseif ('sliders' === $filter['type']) {
-            $min = $this->get_filter_request_value('pmf_min_price', '');
-            $max = $this->get_filter_request_value('pmf_max_price', '');
+            $min = isset($_GET['pmf_min_price']) ? wp_unslash($_GET['pmf_min_price']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $max = isset($_GET['pmf_max_price']) ? wp_unslash($_GET['pmf_max_price']) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             echo '<label>' . esc_html__('Min Price', 'productmaster') . ' <input type="number" min="0" step="0.01" name="pmf_min_price" value="' . esc_attr((string) $min) . '" /></label>';
             echo '<label>' . esc_html__('Max Price', 'productmaster') . ' <input type="number" min="0" step="0.01" name="pmf_max_price" value="' . esc_attr((string) $max) . '" /></label>';
         } elseif ('search_fields' === $filter['type']) {
@@ -1029,9 +954,7 @@ class ProductMaster_Admin_Portal
     private function render_currently_selected_filters()
     {
         $selected = array();
-        $state_data = $this->get_filter_request_data();
-        $request_source = !empty($state_data) ? $state_data : $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        foreach ($request_source as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             if (0 !== strpos((string) $key, 'pmf_')) {
                 continue;
             }
@@ -1057,7 +980,7 @@ class ProductMaster_Admin_Portal
 
     private function get_filter_query_arg_keys()
     {
-        $keys = array('pmf_min_price', 'pmf_max_price', 'pmf_state');
+        $keys = array('pmf_min_price', 'pmf_max_price');
         foreach ($this->get_saved_taxonomy_filters() as $filter) {
             if (isset($filter['id'])) {
                 $keys[] = 'pmf_' . $filter['id'];

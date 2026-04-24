@@ -56,7 +56,6 @@ Implemented:
 - Image-box child hover menus are now aligned to the start edge of the full image-box grid (instead of the hovered tile) for consistent menu placement.
 - Image-box size controls in the filter editor now show width/height on one line for parent tiles, with a dedicated child tile size row (default `54x40`) for child values.
 - Clicking a parent image tile now also toggles that parent’s child-menu master toggle and all mapped child values.
-- Front-end filter submissions now compact selected `pmf_*` values into a single `pmf_state` URL parameter (base64url JSON) to keep filter URLs shorter when many values are selected.
 
 ## Requirements
 

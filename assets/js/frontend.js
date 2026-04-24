@@ -41,14 +41,23 @@
         var grids = form.querySelectorAll('.productmaster-image-box-grid');
 
         grids.forEach(function (grid) {
-            var width = grid.getBoundingClientRect().width;
+            var gridRect = grid.getBoundingClientRect();
+            var width = gridRect.width;
             if (!width) {
                 return;
             }
 
             var childMenus = grid.querySelectorAll('.productmaster-image-children-menu');
             childMenus.forEach(function (menu) {
+                var parent = menu.closest('.productmaster-image-parent');
+                var leftOffset = 0;
+                if (parent) {
+                    var parentRect = parent.getBoundingClientRect();
+                    leftOffset = parentRect.left - gridRect.left;
+                }
+
                 menu.style.width = width + 'px';
+                menu.style.left = '-' + leftOffset + 'px';
             });
         });
     }

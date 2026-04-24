@@ -4,12 +4,24 @@
 
     function syncImageChildrenMenuWidths() {
         $('.productmaster-filters-form .productmaster-image-box-grid').each(function () {
-            var width = $(this).outerWidth();
+            var $grid = $(this);
+            var width = $grid.outerWidth();
             if (!width) {
                 return;
             }
 
-            $(this).find('.productmaster-image-children-menu').css('width', width + 'px');
+            var gridLeft = $grid.offset().left;
+            $grid.find('.productmaster-image-children-menu').each(function () {
+                var $menu = $(this);
+                var $parent = $menu.closest('.productmaster-image-parent');
+                var parentLeft = $parent.length ? $parent.offset().left : gridLeft;
+                var leftOffset = parentLeft - gridLeft;
+
+                $menu.css({
+                    width: width + 'px',
+                    left: '-' + leftOffset + 'px'
+                });
+            });
         });
     }
 

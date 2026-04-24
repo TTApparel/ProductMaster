@@ -9,6 +9,53 @@
         form.requestSubmit ? form.requestSubmit() : form.submit();
     }
 
+    function encodeFilterState(data) {
+        var json = JSON.stringify(data);
+        return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function collectFilterState(form) {
+        var state = {};
+        var formData = new FormData(form);
+
+        formData.forEach(function (value, key) {
+            if (key.indexOf('pmf_') !== 0 || key === 'pmf_state') {
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(state, key)) {
+                if (!Array.isArray(state[key])) {
+                    state[key] = [state[key]];
+                }
+                state[key].push(value);
+                return;
+            }
+
+            state[key] = value;
+        });
+
+        return state;
+    }
+
+    function compactFilterSubmission(form) {
+        var stateInput = form.querySelector('input[name="pmf_state"]');
+        if (!stateInput) {
+            return;
+        }
+
+        var state = collectFilterState(form);
+        stateInput.value = encodeFilterState(state);
+
+        var filterInputs = form.querySelectorAll('[name^="pmf_"]');
+        filterInputs.forEach(function (input) {
+            if (input.name === 'pmf_state') {
+                return;
+            }
+            input.dataset.originalName = input.name;
+            input.removeAttribute('name');
+        });
+    }
+
     function syncChildrenHeaderState(menu) {
         if (!menu) {
             return;
@@ -127,6 +174,10 @@
 
             initializeImageChildrenToggles(form);
             syncChildrenMenuWidths(form);
+
+            form.addEventListener('submit', function () {
+                compactFilterSubmission(form);
+            });
 
             form.addEventListener('change', function (event) {
                 var target = event.target;

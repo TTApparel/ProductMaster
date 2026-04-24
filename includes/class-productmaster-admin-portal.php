@@ -1516,7 +1516,7 @@ class ProductMaster_Admin_Portal
 
                 echo '<div class="productmaster-image-parent">';
                 echo '<label class="productmaster-image-parent-label">';
-                echo '<input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
+                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
                 if (!empty($parent_image)) {
                     echo '<img src="' . esc_url($parent_image) . '" alt="' . esc_attr($parent_term->name) . '" class="productmaster-image-thumb" />';
                 } else {
@@ -1559,7 +1559,7 @@ class ProductMaster_Admin_Portal
                 $checked = in_array($term->slug, $selected_values, true);
                 $image = $this->resolve_term_image_url($term, $presentation);
                 echo '<label class="productmaster-image-parent-label">';
-                echo '<input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
+                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
                 if (!empty($image)) {
                     echo '<img src="' . esc_url($image) . '" alt="' . esc_attr($term->name) . '" class="productmaster-image-thumb" />';
                 } else {

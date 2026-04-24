@@ -55,6 +55,7 @@ Implemented:
 - Taxonomy filters now support per-filter value matching mode (`OR` default or `AND`) for multi-value selection inside a single filter, while different filters are always combined with `AND`.
 - Image-box child hover menus are now aligned to the start edge of the full image-box grid (instead of the hovered tile) for consistent menu placement.
 - Image-box size controls in the filter editor now show width/height on one line for parent tiles, with a dedicated child tile size row (default `54x40`) for child values.
+- Clicking a parent image tile now also toggles that parent’s child-menu master toggle and all mapped child values.
 
 ## Requirements
 

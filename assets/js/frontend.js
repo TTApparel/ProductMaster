@@ -89,6 +89,30 @@
                 return;
             }
 
+            if (target.classList.contains('productmaster-image-parent-checkbox')) {
+                var parent = target.closest('.productmaster-image-parent');
+                if (!parent) {
+                    return;
+                }
+
+                var parentMenu = parent.querySelector('.productmaster-image-children-menu');
+                if (!parentMenu) {
+                    return;
+                }
+
+                var headerToggle = parentMenu.querySelector('.productmaster-image-children-toggle');
+                var nestedChildCheckboxes = parentMenu.querySelectorAll('.productmaster-image-child-checkbox');
+                if (headerToggle) {
+                    headerToggle.checked = target.checked;
+                    headerToggle.indeterminate = false;
+                }
+
+                nestedChildCheckboxes.forEach(function (checkbox) {
+                    checkbox.checked = target.checked;
+                });
+                return;
+            }
+
             if (target.classList.contains('productmaster-image-child-checkbox')) {
                 syncChildrenHeaderState(target.closest('.productmaster-image-children-menu'));
             }

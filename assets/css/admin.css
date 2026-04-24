@@ -335,6 +335,9 @@
 }
 
 .productmaster-image-child-label .productmaster-image-thumb {
+    width: var(--pm-image-child-box-width, 54px);
+    height: var(--pm-image-child-box-height, 40px);
+    object-fit: cover;
     border-color: #dcdcde;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }

@@ -54,6 +54,7 @@ Implemented:
 - Image resolution for Image boxes now follows a consistent fallback chain: configured ProductMaster term image first, then SyncMaster/Smart Swatches term meta (`smart-swatches-framework--src`) when available.
 - Taxonomy filters now support per-filter value matching mode (`OR` default or `AND`) for multi-value selection inside a single filter, while different filters are always combined with `AND`.
 - Image-box child hover menus are now aligned to the start edge of the full image-box grid (instead of the hovered tile) for consistent menu placement.
+- Image-box size controls in the filter editor now show width/height on one line for parent tiles, with a dedicated child tile size row (default `54x40`) for child values.
 
 ## Requirements
 

@@ -1047,8 +1047,8 @@ class ProductMaster_Admin_Portal
         }
         echo '</p></td></tr>';
         echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_image_box_width">' . esc_html__('Image box width (px)', 'productmaster') . '</label></th><td><input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_image_box_height">' . esc_html__('Image box height (px)', 'productmaster') . '</label></th><td><input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
+        echo '<tr><th>' . esc_html__('Image box size (px)', 'productmaster') . '</th><td><label for="pm_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /> <label for="pm_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
+        echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_child_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_child_image_box_width" name="child_image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_width']) . '" /> <label for="pm_child_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_child_image_box_height" name="child_image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_height']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
         usort(
             $taxonomy_terms,
@@ -1147,6 +1147,8 @@ class ProductMaster_Admin_Portal
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
             'image_box_width' => isset($data['image_box_width']) ? max(16, min(240, absint($data['image_box_width']))) : $defaults['image_box_width'],
             'image_box_height' => isset($data['image_box_height']) ? max(16, min(240, absint($data['image_box_height']))) : $defaults['image_box_height'],
+            'child_image_box_width' => isset($data['child_image_box_width']) ? max(16, min(240, absint($data['child_image_box_width']))) : $defaults['child_image_box_width'],
+            'child_image_box_height' => isset($data['child_image_box_height']) ? max(16, min(240, absint($data['child_image_box_height']))) : $defaults['child_image_box_height'],
             'allowed_terms' => $allowed_terms,
             'term_images' => isset($data['term_images']) && is_array($data['term_images']) ? $this->sanitize_term_images(wp_unslash($data['term_images'])) : $defaults['term_images'],
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
@@ -1169,6 +1171,8 @@ class ProductMaster_Admin_Portal
             'checkbox_icon' => '☐',
             'image_box_width' => 40,
             'image_box_height' => 40,
+            'child_image_box_width' => 54,
+            'child_image_box_height' => 40,
             'allowed_terms' => array(),
             'term_images' => array(),
             'custom_css' => '',
@@ -1497,7 +1501,7 @@ class ProductMaster_Admin_Portal
         }
 
         $manual_hierarchy = isset($presentation['hierarchy_map']) ? (array) $presentation['hierarchy_map'] : array();
-        $styles = '--pm-image-box-width:' . (int) $presentation['image_box_width'] . 'px;--pm-image-box-height:' . (int) $presentation['image_box_height'] . 'px;';
+        $styles = '--pm-image-box-width:' . (int) $presentation['image_box_width'] . 'px;--pm-image-box-height:' . (int) $presentation['image_box_height'] . 'px;--pm-image-child-box-width:' . (int) $presentation['child_image_box_width'] . 'px;--pm-image-child-box-height:' . (int) $presentation['child_image_box_height'] . 'px;';
         echo '<div class="productmaster-image-box-grid" style="' . esc_attr($styles) . '">';
 
         if (!empty($manual_hierarchy)) {

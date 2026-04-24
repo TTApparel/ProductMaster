@@ -52,6 +52,7 @@ Implemented:
 - Child-menu headers in Image boxes now include a master checkbox toggle that selects/deselects all mapped child values for that parent and reflects mixed states during selection.
 - Child values in Image boxes now render as image-backed options (thumbnail + label) rather than plain text rows.
 - Image resolution for Image boxes now follows a consistent fallback chain: configured ProductMaster term image first, then SyncMaster/Smart Swatches term meta (`smart-swatches-framework--src`) when available.
+- Taxonomy filters now support per-filter value matching mode (`OR` default or `AND`) for multi-value selection inside a single filter, while different filters are always combined with `AND`.
 
 ## Requirements
 

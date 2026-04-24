@@ -617,6 +617,14 @@ class ProductMaster_Admin_Portal
         return ob_get_clean();
     }
 
+    private function get_filter_value_match_operator($filter)
+    {
+        $presentation = isset($filter['presentation']) && is_array($filter['presentation']) ? $filter['presentation'] : array();
+        $value_match = isset($presentation['value_match']) ? sanitize_key((string) $presentation['value_match']) : 'or';
+
+        return 'and' === $value_match ? 'AND' : 'IN';
+    }
+
     public function apply_filters_to_product_query($query)
     {
         if (is_admin() || !$query->is_main_query()) {
@@ -634,6 +642,7 @@ class ProductMaster_Admin_Portal
         }
 
         $tax_query = (array) $query->get('tax_query', array());
+        $filter_tax_query = array('relation' => 'AND');
         $meta_query = (array) $query->get('meta_query', array());
 
         foreach ($filters as $filter) {
@@ -651,11 +660,11 @@ class ProductMaster_Admin_Portal
                     $terms = array_values(array_intersect($terms, $allowed_terms));
                 }
 
-                $tax_query[] = array(
+                $filter_tax_query[] = array(
                     'taxonomy' => $filter['taxonomy'],
                     'field' => 'slug',
                     'terms' => $terms,
-                    'operator' => 'IN',
+                    'operator' => $this->get_filter_value_match_operator($filter),
                 );
             }
 
@@ -665,11 +674,11 @@ class ProductMaster_Admin_Portal
                     continue;
                 }
 
-                $tax_query[] = array(
+                $filter_tax_query[] = array(
                     'taxonomy' => $filter['taxonomy'],
                     'field' => 'slug',
                     'terms' => array($dropdown_term),
-                    'operator' => 'IN',
+                    'operator' => $this->get_filter_value_match_operator($filter),
                 );
             }
 
@@ -683,11 +692,11 @@ class ProductMaster_Admin_Portal
                 }
 
                 if (!empty($dropdown_terms)) {
-                    $tax_query[] = array(
+                    $filter_tax_query[] = array(
                         'taxonomy' => $filter['taxonomy'],
                         'field' => 'slug',
                         'terms' => $dropdown_terms,
-                        'operator' => 'IN',
+                        'operator' => $this->get_filter_value_match_operator($filter),
                     );
                 }
             }
@@ -710,6 +719,10 @@ class ProductMaster_Admin_Portal
                 'compare' => 'BETWEEN',
                 'type' => 'DECIMAL',
             );
+        }
+
+        if (count($filter_tax_query) > 1) {
+            $tax_query[] = $filter_tax_query;
         }
 
         if (!empty($tax_query)) {
@@ -1024,6 +1037,7 @@ class ProductMaster_Admin_Portal
         echo '<tr><th><label for="pm_text_color">' . esc_html__('Text color', 'productmaster') . '</label></th><td><input id="pm_text_color" name="text_color" type="text" value="' . esc_attr($presentation['text_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_accent_color">' . esc_html__('Accent color', 'productmaster') . '</label></th><td><input id="pm_accent_color" name="accent_color" type="text" value="' . esc_attr($presentation['accent_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_hierarchical_visual">' . esc_html__('Hierarchical', 'productmaster') . '</label></th><td><select id="pm_hierarchical_visual" name="hierarchical_visual"><option value="disabled" ' . selected('disabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Disabled', 'productmaster') . '</option><option value="enabled" ' . selected('enabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Enabled', 'productmaster') . '</option></select></td></tr>';
+        echo '<tr><th><label for="pm_value_match">' . esc_html__('Value matching (within filter)', 'productmaster') . '</label></th><td><select id="pm_value_match" name="value_match"><option value="or" ' . selected('or', $presentation['value_match'], false) . '>' . esc_html__('OR (default)', 'productmaster') . '</option><option value="and" ' . selected('and', $presentation['value_match'], false) . '>' . esc_html__('AND', 'productmaster') . '</option></select><p class="description">' . esc_html__('This controls how multiple values inside this single filter are combined. Different filters are always combined with AND.', 'productmaster') . '</p></td></tr>';
         echo '<tr><th><label for="pm_hierarchy_map_text">' . esc_html__('Manual Hierarchy Map', 'productmaster') . '</label></th><td><textarea id="pm_hierarchy_map_text" name="hierarchy_map_text" rows="6" class="large-text code">' . esc_textarea($presentation['hierarchy_map_text']) . '</textarea><p class="description">';
         echo esc_html__('Use format: parent_slug:child_slug_1,child_slug_2 (one parent per line).', 'productmaster') . ' ';
         if (!$has_parent_terms) {
@@ -1127,6 +1141,7 @@ class ProductMaster_Admin_Portal
             'text_color' => isset($data['text_color']) ? sanitize_hex_color(wp_unslash($data['text_color'])) : $defaults['text_color'],
             'accent_color' => isset($data['accent_color']) ? sanitize_hex_color(wp_unslash($data['accent_color'])) : $defaults['accent_color'],
             'hierarchical_visual' => isset($data['hierarchical_visual']) ? sanitize_key(wp_unslash($data['hierarchical_visual'])) : $defaults['hierarchical_visual'],
+            'value_match' => (isset($data['value_match']) && 'and' === sanitize_key(wp_unslash($data['value_match']))) ? 'and' : 'or',
             'hierarchy_map_text' => $hierarchy_map_text,
             'hierarchy_map' => $hierarchy_map,
             'checkbox_icon' => isset($data['checkbox_icon']) ? sanitize_text_field(wp_unslash($data['checkbox_icon'])) : $defaults['checkbox_icon'],
@@ -1148,6 +1163,7 @@ class ProductMaster_Admin_Portal
             'text_color' => '#1d2327',
             'accent_color' => '#2271b1',
             'hierarchical_visual' => 'disabled',
+            'value_match' => 'or',
             'hierarchy_map_text' => '',
             'hierarchy_map' => array(),
             'checkbox_icon' => '☐',

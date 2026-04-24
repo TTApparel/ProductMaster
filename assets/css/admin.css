@@ -299,6 +299,7 @@
     padding: 8px;
     z-index: 20;
     min-width: 180px;
+    box-sizing: border-box;
 }
 
 .productmaster-image-children-header {

@@ -1,6 +1,18 @@
 (function ($) {
     'use strict';
 
+
+    function syncImageChildrenMenuWidths() {
+        $('.productmaster-filters-form .productmaster-image-box-grid').each(function () {
+            var width = $(this).outerWidth();
+            if (!width) {
+                return;
+            }
+
+            $(this).find('.productmaster-image-children-menu').css('width', width + 'px');
+        });
+    }
+
     function setFeedback(variationId, message, isError) {
         var $feedback = $('.productmaster-stock-feedback[data-variation-id="' + variationId + '"]');
         $feedback.text(message || '');
@@ -69,5 +81,10 @@
         });
 
         frame.open();
+    });
+
+    $(function () {
+        syncImageChildrenMenuWidths();
+        $(window).on('resize', syncImageChildrenMenuWidths);
     });
 })(jQuery);

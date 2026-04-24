@@ -32,6 +32,27 @@
         headerToggle.indeterminate = checkedCount > 0 && checkedCount < childCheckboxes.length;
     }
 
+
+    function syncChildrenMenuWidths(form) {
+        if (!form) {
+            return;
+        }
+
+        var grids = form.querySelectorAll('.productmaster-image-box-grid');
+
+        grids.forEach(function (grid) {
+            var width = grid.getBoundingClientRect().width;
+            if (!width) {
+                return;
+            }
+
+            var childMenus = grid.querySelectorAll('.productmaster-image-children-menu');
+            childMenus.forEach(function (menu) {
+                menu.style.width = width + 'px';
+            });
+        });
+    }
+
     function initializeImageChildrenToggles(form) {
         var childMenus = form.querySelectorAll('.productmaster-image-children-menu');
 
@@ -72,6 +93,7 @@
             var debounceTimer = null;
 
             initializeImageChildrenToggles(form);
+            syncChildrenMenuWidths(form);
 
             form.addEventListener('change', function (event) {
                 var target = event.target;
@@ -92,6 +114,10 @@
                 debounceTimer = window.setTimeout(function () {
                     submitForm(form);
                 }, 350);
+            });
+
+            window.addEventListener('resize', function () {
+                syncChildrenMenuWidths(form);
             });
         });
     });

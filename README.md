@@ -49,6 +49,14 @@ Implemented:
 - Image boxes filters now render parent-term images (default 40x40, adjustable in form-table) and reveal mapped child values in a hover menu.
 - Filter term loading now uses non-empty and empty taxonomy terms so image-box parent values/images still render during setup before products are fully assigned.
 - Parent label captions were moved into the child hover menu as a header for cleaner image-tile presentation.
+- Child-menu headers in Image boxes now include a master checkbox toggle that selects/deselects all mapped child values for that parent and reflects mixed states during selection.
+- Child values in Image boxes now render as image-backed options (thumbnail + label) rather than plain text rows.
+- Image resolution for Image boxes now follows a consistent fallback chain: configured ProductMaster term image first, then SyncMaster/Smart Swatches term meta (`smart-swatches-framework--src`) when available.
+- Taxonomy filters now support per-filter value matching mode (`OR` default or `AND`) for multi-value selection inside a single filter, while different filters are always combined with `AND`.
+- Image-box child hover menus are now aligned to the start edge of the full image-box grid (instead of the hovered tile) for consistent menu placement.
+- Image-box size controls in the filter editor now show width/height on one line for parent tiles, with a dedicated child tile size row (default `54x40`) for child values.
+- Clicking a parent image tile now also toggles that parent’s child-menu master toggle and all mapped child values.
+- Front-end filter submissions now compact selected `pmf_*` values into a single `pmf_state` URL parameter (base64url JSON) to keep filter URLs shorter when many values are selected.
 
 ## Requirements
 
@@ -109,3 +117,5 @@ Planned work:
 - Keep this README updated as each feature is added, changed, or removed.
 - Document new admin screens, shortcode options, hooks, and any data model changes.
 - For every release increment, update the “Current project status” and roadmap progress.
+- Add a dated bullet in **Current project status** for each user-requested change merged on this branch so upcoming iterations remain traceable.
+- If a change is partially complete or depends on another plugin (for example SyncMaster metadata), explicitly note fallback behavior and follow-up work in README before opening a PR.

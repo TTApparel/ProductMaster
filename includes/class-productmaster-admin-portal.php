@@ -1729,7 +1729,7 @@ class ProductMaster_Admin_Portal
                             continue;
                         }
                         $child_term = $term_by_slug[$child_slug];
-                        $child_checked = in_array($child_slug, $selected_values, true);
+                        $child_checked = in_array($child_slug, $selected_values, true) || in_array($parent_slug, $selected_values, true);
                         $child_image = $this->resolve_term_image_url($child_term, $presentation);
                         echo '<label class="productmaster-image-child-label">';
                         echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';

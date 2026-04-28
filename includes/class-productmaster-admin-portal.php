@@ -192,14 +192,14 @@ class ProductMaster_Admin_Portal
         echo '<input type="hidden" name="productmaster_action" value="add_filter" />';
         echo '<table class="form-table" role="presentation"><tbody>';
         echo '<tr><th scope="row"><label for="pm_filter_label">' . esc_html__('Filter Label', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_filter_label" name="filter_label" type="text" required /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_filter_taxonomy">' . esc_html__('Category / Attribute', 'productmaster') . '</label></th><td><select id="pm_filter_taxonomy" name="filter_taxonomy">';
-        foreach ($taxonomy_options as $taxonomy => $label) {
-            echo '<option value="' . esc_attr($taxonomy) . '">' . esc_html($label) . '</option>';
-        }
-        echo '</select></td></tr>';
         echo '<tr><th scope="row"><label for="pm_filter_type">' . esc_html__('Filter Type', 'productmaster') . '</label></th><td><select id="pm_filter_type" name="filter_type">';
         foreach ($this->get_supported_filter_types() as $type => $label) {
             echo '<option value="' . esc_attr($type) . '">' . esc_html($label) . '</option>';
+        }
+        echo '</select></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_filter_taxonomy">' . esc_html__('Category / Attribute', 'productmaster') . '</label></th><td><select id="pm_filter_taxonomy" name="filter_taxonomy">';
+        foreach ($taxonomy_options as $taxonomy => $label) {
+            echo '<option value="' . esc_attr($taxonomy) . '">' . esc_html($label) . '</option>';
         }
         echo '</select></td></tr>';
         echo '</tbody></table>';

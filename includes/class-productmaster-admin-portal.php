@@ -690,6 +690,7 @@ class ProductMaster_Admin_Portal
 
             if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && is_array($raw_value) && !empty($raw_value)) {
                 $terms = array_map('sanitize_title', $raw_value);
+                $terms = $this->expand_terms_by_manual_hierarchy($terms, $filter);
                 if (!empty($allowed_terms)) {
                     $terms = array_values(array_intersect($terms, $allowed_terms));
                 }
@@ -704,6 +705,7 @@ class ProductMaster_Admin_Portal
 
             if ('drop_down_selectors' === $filter['type'] && !empty($raw_value)) {
                 $dropdown_term = sanitize_title((string) $raw_value);
+                $dropdown_terms = $this->expand_terms_by_manual_hierarchy(array($dropdown_term), $filter);
                 if (!empty($allowed_terms) && !in_array($dropdown_term, $allowed_terms, true)) {
                     continue;
                 }
@@ -711,7 +713,7 @@ class ProductMaster_Admin_Portal
                 $filter_tax_query[] = array(
                     'taxonomy' => $filter['taxonomy'],
                     'field' => 'slug',
-                    'terms' => array($dropdown_term),
+                    'terms' => $dropdown_terms,
                     'operator' => $this->get_filter_value_match_operator($filter),
                 );
             }
@@ -720,6 +722,7 @@ class ProductMaster_Admin_Portal
                 $parent_value = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $child_value = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $dropdown_terms = array_filter(array($parent_value, $child_value));
+                $dropdown_terms = $this->expand_terms_by_manual_hierarchy($dropdown_terms, $filter);
 
                 if (!empty($allowed_terms)) {
                     $dropdown_terms = array_values(array_intersect($dropdown_terms, $allowed_terms));
@@ -1446,6 +1449,9 @@ class ProductMaster_Admin_Portal
             $term_id = (int) $term->term_id;
             $term_checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
             $has_children = !empty($terms_by_parent[$term_id]);
+            if (!$term_checked && $has_children && $this->is_branch_fully_selected($terms_by_parent, $term_id, $selected_value)) {
+                $term_checked = true;
+            }
             $branch_has_selected_child = $this->branch_has_selected_value($terms_by_parent, $term_id, $selected_value);
             $open_attr = ($term_checked || $branch_has_selected_child) ? ' open' : '';
 
@@ -1481,6 +1487,25 @@ class ProductMaster_Admin_Portal
         }
 
         return false;
+    }
+
+    private function is_branch_fully_selected($terms_by_parent, $parent_id, $selected_value)
+    {
+        if (!is_array($selected_value) || empty($terms_by_parent[$parent_id])) {
+            return false;
+        }
+
+        foreach ($terms_by_parent[$parent_id] as $child_term) {
+            if (!in_array($child_term->slug, $selected_value, true)) {
+                return false;
+            }
+
+            if (!$this->is_branch_fully_selected($terms_by_parent, (int) $child_term->term_id, $selected_value) && !empty($terms_by_parent[(int) $child_term->term_id])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function build_custom_css_output($filter_id, $custom_css)
@@ -1678,6 +1703,11 @@ class ProductMaster_Admin_Portal
 
                 $parent_term = $term_by_slug[$parent_slug];
                 $parent_checked = in_array($parent_slug, $selected_values, true);
+                if (!$parent_checked && !empty($child_slugs)) {
+                    $child_slugs = array_values(array_filter((array) $child_slugs));
+                    $selected_child_slugs = array_intersect($child_slugs, $selected_values);
+                    $parent_checked = !empty($child_slugs) && count($selected_child_slugs) === count($child_slugs);
+                }
                 $parent_image = $this->resolve_term_image_url($parent_term, $presentation);
 
                 echo '<div class="productmaster-image-parent">';
@@ -1736,5 +1766,25 @@ class ProductMaster_Admin_Portal
         }
 
         echo '</div>';
+    }
+
+    private function expand_terms_by_manual_hierarchy($terms, $filter)
+    {
+        $expanded_terms = array_values(array_unique(array_map('sanitize_title', (array) $terms)));
+        if (empty($filter['presentation']['hierarchy_map']) || !is_array($filter['presentation']['hierarchy_map'])) {
+            return array_values(array_filter($expanded_terms));
+        }
+
+        foreach ($expanded_terms as $term_slug) {
+            if (empty($filter['presentation']['hierarchy_map'][$term_slug])) {
+                continue;
+            }
+
+            foreach ((array) $filter['presentation']['hierarchy_map'][$term_slug] as $child_slug) {
+                $expanded_terms[] = sanitize_title((string) $child_slug);
+            }
+        }
+
+        return array_values(array_unique(array_filter($expanded_terms)));
     }
 }

@@ -609,6 +609,7 @@ class ProductMaster_Admin_Portal
 
         ob_start();
         echo '<form class="productmaster-filters-form" method="get">';
+        $this->render_preserved_filter_query_inputs($filters);
         foreach ($filters as $filter) {
             $this->render_single_filter_input($filter);
         }
@@ -623,6 +624,39 @@ class ProductMaster_Admin_Portal
         $value_match = isset($presentation['value_match']) ? sanitize_key((string) $presentation['value_match']) : 'or';
 
         return 'and' === $value_match ? 'AND' : 'IN';
+    }
+
+    private function render_preserved_filter_query_inputs($rendered_filters)
+    {
+        $all_filter_keys = $this->get_filter_query_arg_keys();
+        $keys_rendered_in_form = array();
+
+        foreach ((array) $rendered_filters as $filter) {
+            $keys_rendered_in_form = array_merge($keys_rendered_in_form, $this->get_filter_query_arg_keys_by_filter($filter));
+        }
+        $keys_rendered_in_form = array_values(array_unique($keys_rendered_in_form));
+
+        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $key = sanitize_key((string) $key);
+            if (!in_array($key, $all_filter_keys, true)) {
+                continue;
+            }
+
+            if (in_array($key, $keys_rendered_in_form, true)) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                foreach ($value as $item) {
+                    $clean_item = sanitize_text_field(wp_unslash($item));
+                    echo '<input type="hidden" name="' . esc_attr($key) . '[]" value="' . esc_attr($clean_item) . '" />';
+                }
+                continue;
+            }
+
+            $clean_value = sanitize_text_field(wp_unslash($value));
+            echo '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr($clean_value) . '" />';
+        }
     }
 
     public function apply_filters_to_product_query($query)

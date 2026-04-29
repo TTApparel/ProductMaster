@@ -2452,14 +2452,14 @@ class ProductMaster_Admin_Portal
     {
         $normalized = array();
         foreach ((array) $hierarchy_map as $parent_slug => $child_slugs) {
-            $clean_parent_slug = sanitize_title((string) $parent_slug);
+            $clean_parent_slug = $this->extract_manual_hierarchy_term_slug($parent_slug);
             if ('' === $clean_parent_slug) {
                 continue;
             }
             $normalized[$clean_parent_slug] = array_values(
                 array_unique(
                     array_filter(
-                        array_map('sanitize_title', (array) $child_slugs)
+                        array_map(array($this, 'extract_manual_hierarchy_term_slug'), (array) $child_slugs)
                     )
                 )
             );
@@ -2480,6 +2480,25 @@ class ProductMaster_Admin_Portal
         }
 
         return $lookup;
+    }
+
+    private function extract_manual_hierarchy_term_slug($value)
+    {
+        $value = trim((string) $value);
+        if ('' === $value) {
+            return '';
+        }
+
+        if (false !== strpos($value, ':')) {
+            $parts = explode(':', $value);
+            $value = trim((string) end($parts));
+        }
+
+        if (0 === strpos($value, self::MULTI_FILTER_PARENT_TOKEN_PREFIX)) {
+            $value = substr($value, strlen(self::MULTI_FILTER_PARENT_TOKEN_PREFIX));
+        }
+
+        return sanitize_title($value);
     }
 
     private function expand_terms_by_manual_hierarchy($terms, $filter)

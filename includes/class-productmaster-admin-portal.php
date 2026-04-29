@@ -868,6 +868,13 @@ class ProductMaster_Admin_Portal
 
             if ('multi_filter' === $filter['type'] && !empty($raw_value)) {
                 $selected_pairs = $this->normalize_multi_filter_values($raw_value);
+                $filters_by_id = array();
+                foreach ($filters as $saved_filter) {
+                    if (!empty($saved_filter['id'])) {
+                        $filters_by_id[$saved_filter['id']] = $saved_filter;
+                    }
+                }
+                $selected_pairs = $this->prune_multi_filter_descendants($selected_pairs, $filters_by_id);
                 $selected_by_source = array();
                 foreach ($selected_pairs as $pair) {
                     if (false === strpos($pair, ':')) {
@@ -881,18 +888,9 @@ class ProductMaster_Admin_Portal
                     }
                     $selected_by_source[$source_id][] = $term_slug;
                 }
-
                 if (empty($selected_by_source)) {
                     continue;
                 }
-
-                $filters_by_id = array();
-                foreach ($filters as $saved_filter) {
-                    if (!empty($saved_filter['id'])) {
-                        $filters_by_id[$saved_filter['id']] = $saved_filter;
-                    }
-                }
-
                 $multi_filter_source_queries = array();
                 foreach ($selected_by_source as $source_id => $source_terms) {
                     if (empty($filters_by_id[$source_id]['taxonomy'])) {
@@ -1360,6 +1358,66 @@ class ProductMaster_Admin_Portal
         return array_values(array_filter(array_map('sanitize_text_field', explode(',', $raw_value))));
     }
 
+    private function prune_multi_filter_descendants($selected_pairs, $filters_by_id)
+    {
+        $selected_pairs = array_values(array_filter(array_map('sanitize_text_field', (array) $selected_pairs)));
+        $terms_by_source = array();
+        foreach ($selected_pairs as $selected_pair) {
+            if (false === strpos($selected_pair, ':')) {
+                continue;
+            }
+            list($source_id, $term_slug) = explode(':', $selected_pair, 2);
+            $source_id = sanitize_key($source_id);
+            $term_slug = sanitize_title($term_slug);
+            if ('' === $source_id || '' === $term_slug) {
+                continue;
+            }
+            $terms_by_source[$source_id][] = $term_slug;
+        }
+
+        $blocked_pairs = array();
+        foreach ($terms_by_source as $source_id => $source_slugs) {
+            if (empty($filters_by_id[$source_id]['taxonomy'])) {
+                continue;
+            }
+
+            $taxonomy = $filters_by_id[$source_id]['taxonomy'];
+            $selected_term_ids = array();
+            $term_id_by_slug = array();
+            foreach (array_values(array_unique($source_slugs)) as $source_slug) {
+                $term = get_term_by('slug', $source_slug, $taxonomy);
+                if (!$term || is_wp_error($term)) {
+                    continue;
+                }
+                $term_id_by_slug[$source_slug] = (int) $term->term_id;
+                $selected_term_ids[(int) $term->term_id] = true;
+            }
+
+            foreach ($term_id_by_slug as $source_slug => $term_id) {
+                $ancestor_ids = get_ancestors($term_id, $taxonomy, 'taxonomy');
+                foreach ($ancestor_ids as $ancestor_id) {
+                    if (!empty($selected_term_ids[(int) $ancestor_id])) {
+                        $blocked_pairs[$source_id . ':' . $source_slug] = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (empty($blocked_pairs)) {
+            return $selected_pairs;
+        }
+
+        $pruned = array();
+        foreach ($selected_pairs as $selected_pair) {
+            if (empty($blocked_pairs[$selected_pair])) {
+                $pruned[] = $selected_pair;
+            }
+        }
+
+        return $pruned;
+    }
+
     private function translate_multi_filter_values($selected_values)
     {
         $translated = array();
@@ -1384,6 +1442,7 @@ class ProductMaster_Admin_Portal
             $selected_by_source[$source_id][] = $term_slug;
         }
 
+        $selected_values = $this->prune_multi_filter_descendants($selected_values, $filters_by_id);
         $displayable_by_source = array();
         foreach ($selected_by_source as $source_id => $source_slugs) {
             $source_slugs = array_values(array_unique(array_filter(array_map('sanitize_title', (array) $source_slugs))));
@@ -2213,6 +2272,13 @@ class ProductMaster_Admin_Portal
     {
         $param_key = 'pmf_' . $filter['id'];
         $selected_pairs = $this->normalize_multi_filter_values(isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $filters_by_id = array();
+        foreach ($this->get_saved_taxonomy_filters() as $saved_filter) {
+            if (!empty($saved_filter['id'])) {
+                $filters_by_id[$saved_filter['id']] = $saved_filter;
+            }
+        }
+        $selected_pairs = $this->prune_multi_filter_descendants($selected_pairs, $filters_by_id);
         $selected_lookup = array_fill_keys($selected_pairs, true);
         $source_ids = isset($filter['presentation']['selected_filter_ids']) ? (array) $filter['presentation']['selected_filter_ids'] : array();
 

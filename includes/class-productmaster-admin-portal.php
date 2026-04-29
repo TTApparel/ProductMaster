@@ -2064,7 +2064,7 @@ class ProductMaster_Admin_Portal
                         }
                         $child_term = $terms_by_slug[$child_slug];
                         $child_value = $source_filter['id'] . ':' . $child_term->slug;
-                        $child_checked = isset($selected_lookup[$child_value]);
+                        $child_checked = isset($selected_lookup[$child_value]) || $checked;
                         $child_term_image = $this->resolve_term_image_url($child_term, $source_presentation);
                         echo '<label class="productmaster-image-child-label productmaster-multi-second-level">';
                         echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($child_value) . '" ' . checked($child_checked, true, false) . ' />';

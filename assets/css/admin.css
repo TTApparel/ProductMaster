@@ -79,16 +79,20 @@
 
 .productmaster-loop-color-slider {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 2px;
 }
 
 .productmaster-loop-color-swatch {
-    width: 36px;
-    height: 36px;
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
     object-fit: cover;
     border: 1px solid #dcdcde;
-    border-radius: 999px;
+    border-radius: 2px;
     cursor: pointer;
 }
 

@@ -2653,6 +2653,9 @@ class ProductMaster_Admin_Portal
             if (!in_array($field, $visible, true)) {
                 continue;
             }
+            if ('color_variations' !== $field) {
+                continue;
+            }
             $tag = isset($field_tags[$field]) ? sanitize_key((string) $field_tags[$field]) : 'div';
             $style = isset($field_styles[$field]) && is_array($field_styles[$field]) ? $field_styles[$field] : array();
             $font_size = max(10, min(60, isset($style['font_size']) ? absint($style['font_size']) : 16));
@@ -2698,7 +2701,7 @@ class ProductMaster_Admin_Portal
                     continue;
                 }
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
-                echo '<div class="productmaster-loop-color-slider">';
+                echo '<div class="productmaster-loop-color-slider" aria-label="' . esc_attr__('Color variations', 'productmaster') . '">';
                 foreach ($color_variation_images as $variation_image) {
                     echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($variation_image) . '" alt="" data-variation-image="' . esc_url($variation_image) . '" />';
                 }

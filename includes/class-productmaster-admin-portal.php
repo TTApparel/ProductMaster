@@ -1020,10 +1020,8 @@ class ProductMaster_Admin_Portal
                         '' !== $max_price ? $max_price : __('Any', 'productmaster')
                     );
                 }
-            } elseif (is_array($raw_value)) {
-                $selected_values = array_map('sanitize_title', $raw_value);
             } elseif (!empty($raw_value)) {
-                $selected_values[] = sanitize_title((string) $raw_value);
+                $selected_values = $this->normalize_filter_values($raw_value);
             } elseif ('drop_down_selectors' === $tracked_filter['type']) {
                 $parent = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $child = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

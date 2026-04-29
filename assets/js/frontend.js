@@ -6,7 +6,99 @@
             return;
         }
 
+        normalizeHierarchySelectionsForSubmit(form);
         form.requestSubmit ? form.requestSubmit() : form.submit();
+    }
+
+    function normalizeHierarchySelectionsForSubmit(form) {
+        var toggledInputs = [];
+        var childMenus = form.querySelectorAll('.productmaster-image-children-menu');
+
+        childMenus.forEach(function (menu) {
+            var parent = menu.closest('.productmaster-image-parent');
+            if (!parent) {
+                return;
+            }
+
+            var parentCheckbox = parent.querySelector('.productmaster-image-parent-checkbox');
+            var childCheckboxes = menu.querySelectorAll('.productmaster-image-child-checkbox');
+            if (!parentCheckbox || !childCheckboxes.length) {
+                return;
+            }
+
+            var allChildrenChecked = true;
+            childCheckboxes.forEach(function (childCheckbox) {
+                if (!childCheckbox.checked) {
+                    allChildrenChecked = false;
+                }
+            });
+
+            if (!allChildrenChecked) {
+                return;
+            }
+
+            parentCheckbox.checked = true;
+            childCheckboxes.forEach(function (childCheckbox) {
+                childCheckbox.disabled = true;
+                toggledInputs.push(childCheckbox);
+            });
+        });
+
+        if (!toggledInputs.length) {
+            normalizeCheckboxArrayParamsForSubmit(form);
+            return;
+        }
+
+        window.setTimeout(function () {
+            toggledInputs.forEach(function (input) {
+                input.disabled = false;
+            });
+            normalizeCheckboxArrayParamsForSubmit(form);
+        }, 0);
+    }
+
+    function normalizeCheckboxArrayParamsForSubmit(form) {
+        var groupedValues = {};
+        var toggledInputs = [];
+        var existingNormalizedInputs = form.querySelectorAll('.productmaster-normalized-array-param');
+        existingNormalizedInputs.forEach(function (input) {
+            input.parentNode.removeChild(input);
+        });
+
+        var arrayInputs = form.querySelectorAll('input[name$="[]"]');
+        arrayInputs.forEach(function (input) {
+            if (input.disabled || !input.checked) {
+                return;
+            }
+
+            var originalName = input.name;
+            if (!groupedValues[originalName]) {
+                groupedValues[originalName] = [];
+            }
+            groupedValues[originalName].push(input.value);
+        });
+
+        Object.keys(groupedValues).forEach(function (arrayName) {
+            var normalizedName = arrayName.slice(0, -2);
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = normalizedName;
+            hidden.value = groupedValues[arrayName].join(',');
+            hidden.className = 'productmaster-normalized-array-param';
+            form.appendChild(hidden);
+
+            var inputsToDisable = form.querySelectorAll('input[name="' + arrayName.replace(/"/g, '\\"') + '"]');
+            inputsToDisable.forEach(function (input) {
+                input.disabled = true;
+                toggledInputs.push(input);
+            });
+        });
+
+        window.setTimeout(function () {
+            toggledInputs.forEach(function (input) {
+                input.disabled = false;
+            });
+        }, 0);
     }
 
     function syncChildrenHeaderState(menu) {
@@ -114,7 +206,18 @@
             }
 
             if (target.classList.contains('productmaster-image-child-checkbox')) {
-                syncChildrenHeaderState(target.closest('.productmaster-image-children-menu'));
+                var currentMenu = target.closest('.productmaster-image-children-menu');
+                syncChildrenHeaderState(currentMenu);
+
+                if (!target.checked && currentMenu) {
+                    var currentParent = currentMenu.closest('.productmaster-image-parent');
+                    if (currentParent) {
+                        var currentParentCheckbox = currentParent.querySelector('.productmaster-image-parent-checkbox');
+                        if (currentParentCheckbox) {
+                            currentParentCheckbox.checked = false;
+                        }
+                    }
+                }
             }
         });
     }

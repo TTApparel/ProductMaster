@@ -182,7 +182,7 @@
     visibility: visible;
 }
 
-.productmaster-image-parent:hover .productmaster-image-children-menu {
+.productmaster-image-parent:hover > .productmaster-image-children-menu {
     display: grid;
     gap: 6px;
 }

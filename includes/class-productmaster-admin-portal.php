@@ -1158,7 +1158,11 @@ class ProductMaster_Admin_Portal
                     );
                 }
             } elseif (!empty($raw_value)) {
-                $selected_values = $this->normalize_filter_values($raw_value);
+                if (isset($tracked_filter['type']) && 'multi_filter' === $tracked_filter['type']) {
+                    $selected_values = $this->normalize_multi_filter_values($raw_value);
+                } else {
+                    $selected_values = $this->normalize_filter_values($raw_value);
+                }
             } elseif ('drop_down_selectors' === $tracked_filter['type']) {
                 $parent = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $child = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -1310,6 +1314,7 @@ class ProductMaster_Admin_Portal
     {
         $translated = array();
         $filters_by_id = array();
+        $selected_by_source = array();
         foreach ($this->get_saved_taxonomy_filters() as $saved_filter) {
             if (!empty($saved_filter['id'])) {
                 $filters_by_id[$saved_filter['id']] = $saved_filter;
@@ -1326,6 +1331,65 @@ class ProductMaster_Admin_Portal
             list($source_id, $term_slug) = explode(':', $selected_value, 2);
             $source_id = sanitize_key($source_id);
             $term_slug = sanitize_title($term_slug);
+            $selected_by_source[$source_id][] = $term_slug;
+        }
+
+        $displayable_by_source = array();
+        foreach ($selected_by_source as $source_id => $source_slugs) {
+            $source_slugs = array_values(array_unique(array_filter(array_map('sanitize_title', (array) $source_slugs))));
+            if (empty($filters_by_id[$source_id]['taxonomy'])) {
+                $displayable_by_source[$source_id] = $source_slugs;
+                continue;
+            }
+
+            $taxonomy = $filters_by_id[$source_id]['taxonomy'];
+            $selected_term_ids = array();
+            $terms_by_slug = array();
+            foreach ($source_slugs as $source_slug) {
+                $source_term = get_term_by('slug', $source_slug, $taxonomy);
+                if (!$source_term || is_wp_error($source_term)) {
+                    continue;
+                }
+                $selected_term_ids[(int) $source_term->term_id] = true;
+                $terms_by_slug[$source_slug] = $source_term;
+            }
+
+            $displayable_slugs = array();
+            foreach ($source_slugs as $source_slug) {
+                if (empty($terms_by_slug[$source_slug])) {
+                    $displayable_slugs[] = $source_slug;
+                    continue;
+                }
+                $source_term = $terms_by_slug[$source_slug];
+                $ancestor_ids = get_ancestors((int) $source_term->term_id, $taxonomy, 'taxonomy');
+                $has_selected_ancestor = false;
+                foreach ($ancestor_ids as $ancestor_id) {
+                    if (!empty($selected_term_ids[(int) $ancestor_id])) {
+                        $has_selected_ancestor = true;
+                        break;
+                    }
+                }
+                if (!$has_selected_ancestor) {
+                    $displayable_slugs[] = $source_slug;
+                }
+            }
+
+            $displayable_by_source[$source_id] = $displayable_slugs;
+        }
+
+        foreach ((array) $selected_values as $selected_value) {
+            $selected_value = sanitize_text_field((string) $selected_value);
+            if (false === strpos($selected_value, ':')) {
+                continue;
+            }
+
+            list($source_id, $term_slug) = explode(':', $selected_value, 2);
+            $source_id = sanitize_key($source_id);
+            $term_slug = sanitize_title($term_slug);
+            if (empty($displayable_by_source[$source_id]) || !in_array($term_slug, $displayable_by_source[$source_id], true)) {
+                continue;
+            }
+
             if (empty($filters_by_id[$source_id]['taxonomy'])) {
                 $translated[] = $term_slug;
                 continue;

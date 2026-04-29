@@ -160,7 +160,18 @@
             }
 
             if (target.classList.contains('productmaster-image-child-checkbox')) {
-                syncChildrenHeaderState(target.closest('.productmaster-image-children-menu'));
+                var currentMenu = target.closest('.productmaster-image-children-menu');
+                syncChildrenHeaderState(currentMenu);
+
+                if (!target.checked && currentMenu) {
+                    var currentParent = currentMenu.closest('.productmaster-image-parent');
+                    if (currentParent) {
+                        var currentParentCheckbox = currentParent.querySelector('.productmaster-image-parent-checkbox');
+                        if (currentParentCheckbox) {
+                            currentParentCheckbox.checked = false;
+                        }
+                    }
+                }
             }
         });
     }

@@ -213,6 +213,19 @@
                 var currentMenu = target.closest('.productmaster-image-children-menu');
                 syncChildrenHeaderState(currentMenu);
 
+                var nestedMenu = target.closest('.productmaster-image-child-label') ? target.closest('.productmaster-image-child-label').querySelector(':scope > .productmaster-image-children-menu') : null;
+                if (nestedMenu) {
+                    var nestedHeaderToggle = nestedMenu.querySelector('.productmaster-image-children-toggle');
+                    var nestedChildCheckboxes = nestedMenu.querySelectorAll('.productmaster-image-child-checkbox');
+                    nestedChildCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = target.checked;
+                    });
+                    if (nestedHeaderToggle) {
+                        nestedHeaderToggle.checked = target.checked;
+                        nestedHeaderToggle.indeterminate = false;
+                    }
+                }
+
                 if (!target.checked && currentMenu) {
                     var currentParent = currentMenu.closest('.productmaster-image-parent');
                     if (currentParent) {

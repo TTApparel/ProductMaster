@@ -19,6 +19,12 @@
     display: grid;
     grid-template-columns: repeat(var(--pm-loop-columns, 4), minmax(0, 1fr));
     gap: 16px;
+    align-items: stretch;
+}
+
+.productmaster-product-loop-grid > *,
+.productmaster-loop-preview > * {
+    min-width: 0;
 }
 
 .productmaster-loop-card {
@@ -26,10 +32,20 @@
     border-radius: 6px;
     padding: 12px;
     background: #fff;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .productmaster-loop-card .productmaster-loop-title {
     margin: 8px 0 4px;
+}
+
+.productmaster-loop-card img {
+    display: block;
+    max-width: 100%;
+    height: auto;
 }
 
 .productmaster-card .meta {

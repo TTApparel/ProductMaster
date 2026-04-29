@@ -211,10 +211,25 @@
     display: grid;
     grid-template-columns: repeat(var(--pm-loop-columns, 4), minmax(0, 1fr));
     gap: 20px;
+    align-items: stretch;
+}
+
+.productmaster-product-loop-grid > * {
+    min-width: 0;
 }
 
 .productmaster-loop-card {
     border: 1px solid #e2e2e2;
     border-radius: 8px;
     padding: 14px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.productmaster-loop-card img {
+    display: block;
+    max-width: 100%;
+    height: auto;
 }

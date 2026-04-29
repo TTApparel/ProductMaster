@@ -49,6 +49,7 @@ class ProductMaster_Plugin
         add_action('wp_ajax_productmaster_update_variation_stock', array($this->admin_portal, 'ajax_update_variation_stock'));
         add_shortcode('productmaster_filters', array($this->admin_portal, 'render_filters_shortcode'));
         add_shortcode('productmaster_filter', array($this->admin_portal, 'render_single_filter_shortcode'));
+        add_shortcode('productmaster_product_loop', array($this->admin_portal, 'render_product_loop_shortcode'));
         add_action('pre_get_posts', array($this->admin_portal, 'apply_filters_to_product_query'));
         add_action('init', array($this->admin_portal, 'register_dynamic_filter_shortcodes'));
     }

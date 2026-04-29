@@ -2595,9 +2595,9 @@ class ProductMaster_Admin_Portal
             } elseif ('button' === $field) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-button"><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></' . esc_attr($tag) . '>';
             } elseif ('brand' === $field && !empty($brand_names) && !is_wp_error($brand_names)) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand"><strong>' . esc_html__('Brand:', 'productmaster') . '</strong> ' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand">' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories"><strong>' . esc_html__('Categories:', 'productmaster') . '</strong> ' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories">' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
             }
         }
         echo '</article>';

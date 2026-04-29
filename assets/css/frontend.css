@@ -221,7 +221,7 @@
 .productmaster-loop-card {
     border: 1px solid #e2e2e2;
     border-radius: 8px;
-    padding: 14px;
+    padding: 0;
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;

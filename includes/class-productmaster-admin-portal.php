@@ -2383,6 +2383,8 @@ class ProductMaster_Admin_Portal
                 $value = $source_filter['id'] . ':' . self::MULTI_FILTER_PARENT_TOKEN_PREFIX . $term->slug;
                 $checked = isset($selected_lookup[$value]);
                 $term_image = $this->resolve_term_image_url($term, $source_presentation);
+                $child_slugs = isset($manual_hierarchy[$term->slug]) && is_array($manual_hierarchy[$term->slug]) ? $manual_hierarchy[$term->slug] : array();
+                echo '<div class="productmaster-multi-parent-item">';
                 echo '<label class="productmaster-image-child-label">';
                 echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($value) . '" ' . checked($checked, true, false) . ' />';
                 echo '<span class="productmaster-image-child-tag">' . esc_html($term->name) . '</span>';
@@ -2391,6 +2393,7 @@ class ProductMaster_Admin_Portal
                 } else {
                     echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($term->name, 0, 1)) . '</span>';
                 }
+                echo '</label>';
                 if (!empty($child_slugs)) {
                     echo '<div class="productmaster-image-children-menu">';
                     echo '<label class="productmaster-image-children-header">' . esc_html($term->name) . '</label>';
@@ -2413,7 +2416,7 @@ class ProductMaster_Admin_Portal
                     }
                     echo '</div></div>';
                 }
-                echo '</label>';
+                echo '</div>';
             }
             echo '</div></div></div>';
         }

@@ -2391,6 +2391,27 @@ class ProductMaster_Admin_Portal
                 } else {
                     echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($term->name, 0, 1)) . '</span>';
                 }
+                if (!empty($child_slugs)) {
+                    echo '<div class="productmaster-image-children-menu">';
+                    echo '<label class="productmaster-image-children-header">' . esc_html($term->name) . '</label>';
+                    echo '<div class="productmaster-image-children-grid">';
+                    foreach ($child_slugs as $child_slug) {
+                        if (!isset($terms_by_slug[$child_slug])) {
+                            continue;
+                        }
+                        $child_term = $terms_by_slug[$child_slug];
+                        $child_term_image = $this->resolve_term_image_url($child_term, $source_presentation);
+                        echo '<span class="productmaster-image-child-label productmaster-multi-second-level">';
+                        echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
+                        if (!empty($child_term_image)) {
+                            echo '<img src="' . esc_url($child_term_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';
+                        } else {
+                            echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($child_term->name, 0, 1)) . '</span>';
+                        }
+                        echo '</span>';
+                    }
+                    echo '</div></div>';
+                }
                 echo '</label>';
             }
             echo '</div></div></div>';

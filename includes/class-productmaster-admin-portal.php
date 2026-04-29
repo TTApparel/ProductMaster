@@ -1965,6 +1965,31 @@ class ProductMaster_Admin_Portal
             }
 
             $source_presentation = isset($source_filter['presentation']) && is_array($source_filter['presentation']) ? $source_filter['presentation'] : $this->get_default_presentation_settings();
+            $terms_by_slug = array();
+            foreach ($terms as $term) {
+                $terms_by_slug[$term->slug] = $term;
+            }
+
+            $parent_only_terms = array();
+            $manual_hierarchy = isset($source_presentation['hierarchy_map']) && is_array($source_presentation['hierarchy_map']) ? $source_presentation['hierarchy_map'] : array();
+            if (!empty($manual_hierarchy)) {
+                foreach (array_keys($manual_hierarchy) as $parent_slug) {
+                    if (isset($terms_by_slug[$parent_slug])) {
+                        $parent_only_terms[] = $terms_by_slug[$parent_slug];
+                    }
+                }
+            } else {
+                foreach ($terms as $term) {
+                    if ((int) $term->parent === 0) {
+                        $parent_only_terms[] = $term;
+                    }
+                }
+            }
+
+            if (empty($parent_only_terms)) {
+                $parent_only_terms = $terms;
+            }
+
             echo '<div class="productmaster-image-parent">';
             echo '<label class="productmaster-image-parent-label">';
             echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr((string) $source_filter['label'], 0, 1)) . '</span>';
@@ -1974,7 +1999,7 @@ class ProductMaster_Admin_Portal
             echo '<div class="productmaster-image-children-menu">';
             echo '<div class="productmaster-image-children-header">' . esc_html($source_filter['label']) . '</div>';
             echo '<div class="productmaster-image-children-grid">';
-            foreach ($terms as $term) {
+            foreach ($parent_only_terms as $term) {
                 $value = $source_filter['id'] . ':' . $term->slug;
                 $checked = isset($selected_lookup[$value]);
                 $term_image = $this->resolve_term_image_url($term, $source_presentation);

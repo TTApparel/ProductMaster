@@ -206,3 +206,45 @@
 .productmaster-active-filter-label {
     font-weight: 600;
 }
+
+.productmaster-product-loop-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--pm-loop-columns, 4), minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+}
+
+.productmaster-product-loop-grid > * {
+    min-width: 0;
+}
+
+.productmaster-loop-card {
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    padding: 0;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.productmaster-loop-card img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.productmaster-loop-color-slider {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.productmaster-loop-color-swatch {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border: 1px solid #dcdcde;
+    border-radius: 999px;
+    cursor: pointer;
+}

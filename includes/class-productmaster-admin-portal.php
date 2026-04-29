@@ -2755,11 +2755,11 @@ class ProductMaster_Admin_Portal
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand" ' . $inline_style . '>' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
-            } elseif ('color_variations' === $field && (!empty($color_variation_images) || $is_preview)) {
-                if (empty($color_variation_images) && $is_preview) {
+            } elseif ('color_variations' === $field) {
+                if (empty($color_variation_images) && ($is_preview || $product->is_type('variable'))) {
                     $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
                     if (!empty($fallback_image)) {
-                        $color_variation_images = array($fallback_image, $fallback_image, $fallback_image);
+                        $color_variation_images = array($fallback_image);
                     }
                 }
                 if (empty($color_variation_images)) {

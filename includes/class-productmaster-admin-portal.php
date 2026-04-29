@@ -2401,7 +2401,8 @@ class ProductMaster_Admin_Portal
                         }
                         $child_term = $terms_by_slug[$child_slug];
                         $child_term_image = $this->resolve_term_image_url($child_term, $source_presentation);
-                        echo '<span class="productmaster-image-child-label productmaster-multi-second-level">';
+                        echo '<label class="productmaster-image-child-label productmaster-multi-second-level">';
+                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" value="' . esc_attr($source_filter['id'] . ':' . $child_term->slug) . '" disabled="disabled" tabindex="-1" />';
                         echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
                         if (!empty($child_term_image)) {
                             echo '<img src="' . esc_url($child_term_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';

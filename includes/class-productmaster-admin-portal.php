@@ -2716,25 +2716,33 @@ class ProductMaster_Admin_Portal
         }
 
         $images = array();
-        $variations = $product->get_available_variations();
-        foreach ($variations as $variation) {
-            $image_url = '';
-            if (isset($variation['variation_id'])) {
-                $variation_product = wc_get_product((int) $variation['variation_id']);
-                if ($variation_product) {
-                    $variation_image_id = $variation_product->get_image_id();
-                    if (!empty($variation_image_id)) {
-                        $image_url = wp_get_attachment_image_url($variation_image_id, 'woocommerce_thumbnail');
-                    }
-                }
+        $variation_ids = $product->get_children();
+        foreach ($variation_ids as $variation_id) {
+            $variation_product = wc_get_product($variation_id);
+            if (!$variation_product) {
+                continue;
             }
-            if (empty($image_url) && isset($variation['image']['thumbnail_src'])) {
-                $image_url = (string) $variation['image']['thumbnail_src'];
+
+            $variation_image_id = $variation_product->get_image_id();
+            if (empty($variation_image_id)) {
+                continue;
             }
+
+            $image_url = wp_get_attachment_image_url($variation_image_id, 'woocommerce_thumbnail');
             if (empty($image_url)) {
                 continue;
             }
+
             $images[] = esc_url_raw($image_url);
+        }
+
+        if (empty($images)) {
+            $variations = $product->get_available_variations();
+            foreach ($variations as $variation) {
+                if (isset($variation['image']['thumbnail_src']) && !empty($variation['image']['thumbnail_src'])) {
+                    $images[] = esc_url_raw((string) $variation['image']['thumbnail_src']);
+                }
+            }
         }
         return array_values(array_unique($images));
     }

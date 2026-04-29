@@ -48,6 +48,28 @@
     height: auto;
 }
 
+.productmaster-loop-sortable {
+    display: grid;
+    gap: 10px;
+}
+
+.productmaster-loop-sortable-item {
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 8px;
+    background: #f9f9f9;
+}
+
+.productmaster-loop-sortable-item.is-dragging {
+    opacity: 0.6;
+}
+
+.productmaster-drag-handle {
+    cursor: move;
+    font-weight: 700;
+    margin-right: 6px;
+}
+
 .productmaster-loop-color-slider {
     display: flex;
     gap: 8px;

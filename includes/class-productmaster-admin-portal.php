@@ -2454,6 +2454,17 @@ class ProductMaster_Admin_Portal
             'categories' => __('Main categories', 'productmaster'),
             'color_variations' => __('Color variations', 'productmaster'),
         );
+        $ordered_layout_fields = array();
+        foreach ((array) $loop['field_order'] as $field_key) {
+            if (isset($layout_fields[$field_key])) {
+                $ordered_layout_fields[$field_key] = $layout_fields[$field_key];
+            }
+        }
+        foreach ($layout_fields as $field_key => $field_label) {
+            if (!isset($ordered_layout_fields[$field_key])) {
+                $ordered_layout_fields[$field_key] = $field_label;
+            }
+        }
         $tag_options = $this->get_product_loop_tag_options();
         $field_styles = isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array();
 
@@ -2466,14 +2477,14 @@ class ProductMaster_Admin_Portal
         echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" value="' . esc_attr($loop['shortcode']) . '" /><p class="description">' . esc_html__('Use this shortcode where the loop should render. Default: [productmaster_product_loop]', 'productmaster') . '</p></td></tr>';
         echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="' . esc_attr((string) $loop['columns']) . '" /></td></tr>';
         echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="' . esc_attr((string) $loop['limit']) . '" /></td></tr>';
-        echo '<tr><th scope="row">' . esc_html__('Card elements', 'productmaster') . '</th><td><fieldset class="productmaster-loop-fields">';
-        foreach ($layout_fields as $key => $label) {
+        echo '<tr><th scope="row">' . esc_html__('Card elements', 'productmaster') . '</th><td><fieldset class="productmaster-loop-fields"><p class="description">' . esc_html__('Drag elements up or down to set display order.', 'productmaster') . '</p><div class="productmaster-loop-sortable">';
+        foreach ($ordered_layout_fields as $key => $label) {
             $visible = in_array($key, $loop['visible_fields'], true);
-            $order = array_search($key, $loop['field_order'], true);
             $current_tag = isset($loop['field_tags'][$key]) ? $loop['field_tags'][$key] : 'div';
             $current_style = isset($field_styles[$key]) && is_array($field_styles[$key]) ? $field_styles[$key] : array('bold' => 0, 'italic' => 0, 'font_size' => 16);
-            echo '<p><label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
-            echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="8" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label> ';
+            echo '<div class="productmaster-loop-sortable-item" draggable="true" data-field-key="' . esc_attr($key) . '">';
+            echo '<input type="hidden" name="field_order[]" value="' . esc_attr($key) . '" />';
+            echo '<p><span class="productmaster-drag-handle" aria-hidden="true">↕</span> <label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
             echo '<label>' . esc_html__('HTML tag', 'productmaster') . ' <select name="field_tags[' . esc_attr($key) . ']">';
             foreach ($tag_options as $tag => $tag_label) {
                 echo '<option value="' . esc_attr($tag) . '" ' . selected($current_tag, $tag, false) . '>' . esc_html($tag_label) . '</option>';
@@ -2482,8 +2493,9 @@ class ProductMaster_Admin_Portal
             echo '<label><input type="checkbox" name="field_styles[' . esc_attr($key) . '][bold]" value="1" ' . checked(!empty($current_style['bold']), true, false) . ' /> ' . esc_html__('Bold', 'productmaster') . '</label> ';
             echo '<label><input type="checkbox" name="field_styles[' . esc_attr($key) . '][italic]" value="1" ' . checked(!empty($current_style['italic']), true, false) . ' /> ' . esc_html__('Italic', 'productmaster') . '</label> ';
             echo '<label>' . esc_html__('Font size', 'productmaster') . ' <input type="number" min="10" max="60" name="field_styles[' . esc_attr($key) . '][font_size]" value="' . esc_attr((string) (int) ($current_style['font_size'] ?? 16)) . '" />px</label></p>';
+            echo '</div>';
         }
-        echo '</fieldset></td></tr>';
+        echo '</div></fieldset></td></tr>';
         echo '</tbody></table>';
         submit_button(__('Save Product Loop Layout', 'productmaster'));
         echo '</form>';
@@ -2521,13 +2533,8 @@ class ProductMaster_Admin_Portal
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
         $allowed_tags = array_keys($this->get_product_loop_tag_options());
         $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
-        $sort_map = array();
-        foreach ($allowed_fields as $field_key) {
-            $sort_map[$field_key] = isset($field_order[$field_key]) ? max(1, absint($field_order[$field_key])) : 99;
-        }
-        uasort($sort_map, function ($a, $b) {
-            return $a <=> $b;
-        });
+        $field_order = array_values(array_intersect($allowed_fields, array_map('sanitize_key', (array) $field_order)));
+        $field_order = array_values(array_unique(array_merge($field_order, $allowed_fields)));
 
         $sanitized_tags = array();
         foreach ($allowed_fields as $field_key) {
@@ -2549,7 +2556,7 @@ class ProductMaster_Admin_Portal
             'limit' => max(1, min(60, $limit)),
             'shortcode' => empty($shortcode) ? '[productmaster_product_loop]' : $shortcode,
             'visible_fields' => $visible_fields,
-            'field_order' => array_keys($sort_map),
+            'field_order' => $field_order,
             'field_tags' => $sanitized_tags,
             'field_styles' => $sanitized_styles,
         );

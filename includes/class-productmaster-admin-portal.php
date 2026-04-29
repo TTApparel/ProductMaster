@@ -1710,6 +1710,16 @@ class ProductMaster_Admin_Portal
             $swatch_image_url = '';
             if (is_numeric($swatch_image)) {
                 $swatch_image_url = wp_get_attachment_url((int) $swatch_image);
+            } elseif (is_array($swatch_image)) {
+                if (!empty($swatch_image['id']) && is_numeric($swatch_image['id'])) {
+                    $swatch_image_url = wp_get_attachment_url((int) $swatch_image['id']);
+                } elseif (!empty($swatch_image['image']) && is_string($swatch_image['image'])) {
+                    $swatch_image_url = $swatch_image['image'];
+                } elseif (!empty($swatch_image['url']) && is_string($swatch_image['url'])) {
+                    $swatch_image_url = $swatch_image['url'];
+                } elseif (!empty($swatch_image['src']) && is_string($swatch_image['src'])) {
+                    $swatch_image_url = $swatch_image['src'];
+                }
             } elseif (is_string($swatch_image)) {
                 $swatch_image_url = $swatch_image;
             }
@@ -1730,7 +1740,7 @@ class ProductMaster_Admin_Portal
 
     private function get_swatch_image_meta_keys()
     {
-        return array(
+        $default_keys = array(
             'smart-swatches-framework--src',
             'smart_swatches_framework_src',
             'swatch_image',
@@ -1739,6 +1749,9 @@ class ProductMaster_Admin_Portal
             'product_attribute_image_id',
             'thumbnail_id',
         );
+
+        $keys = apply_filters('productmaster_swatch_image_meta_keys', $default_keys);
+        return is_array($keys) ? array_values(array_unique(array_filter($keys))) : $default_keys;
     }
 
     private function is_local_media_file_missing($url)

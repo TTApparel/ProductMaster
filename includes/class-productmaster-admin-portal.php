@@ -2039,7 +2039,7 @@ class ProductMaster_Admin_Portal
             echo '</label>';
 
             echo '<div class="productmaster-image-children-menu">';
-            echo '<div class="productmaster-image-children-header">' . esc_html($source_filter['label']) . '</div>';
+            echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($source_filter['id']) . '" /> ' . esc_html($source_filter['label']) . '</label>';
             echo '<div class="productmaster-image-children-grid">';
             foreach ($parent_only_terms as $term) {
                 $value = $source_filter['id'] . ':' . $term->slug;
@@ -2056,7 +2056,7 @@ class ProductMaster_Admin_Portal
                 }
                 if (!empty($child_slugs)) {
                     echo '<div class="productmaster-image-children-menu">';
-                    echo '<div class="productmaster-image-children-header">' . esc_html($term->name) . '</div>';
+                    echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($value) . '" /> ' . esc_html($term->name) . '</label>';
                     echo '<div class="productmaster-image-children-grid">';
                     foreach ($child_slugs as $child_slug) {
                         if (!isset($terms_by_slug[$child_slug])) {

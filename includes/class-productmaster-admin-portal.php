@@ -2619,9 +2619,14 @@ class ProductMaster_Admin_Portal
 
     private function render_product_loop_card_markup($product, $loop, $is_preview)
     {
-        $visible = isset($loop['visible_fields']) ? (array) $loop['visible_fields'] : array();
-        $order = isset($loop['field_order']) ? (array) $loop['field_order'] : array();
-        $all_fields = array_unique(array_merge($order, array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations')));
+        $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
+        $visible = isset($loop['visible_fields']) && is_array($loop['visible_fields'])
+            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['visible_fields'])))
+            : $allowed_fields;
+        $order = isset($loop['field_order']) && is_array($loop['field_order'])
+            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['field_order'])))
+            : $allowed_fields;
+        $all_fields = array_values(array_unique(array_merge($order, $visible)));
         $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
         $field_styles = isset($loop['field_styles']) ? (array) $loop['field_styles'] : array();
         $color_variation_images = $this->get_product_color_variation_images($product);

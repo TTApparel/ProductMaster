@@ -13,7 +13,7 @@ class ProductMaster_Admin_Portal
     const PRODUCT_LOOP_SLUG = 'productmaster-product-loop';
     const PER_PAGE = 20;
     const FILTER_OPTION_KEY = 'productmaster_taxonomy_filters';
-    const LOOP_OPTION_KEY = 'productmaster_product_loops';
+    const LOOP_OPTION_KEY = 'productmaster_product_loop';
 
     public function register_menu()
     {
@@ -97,7 +97,7 @@ class ProductMaster_Admin_Portal
         wp_enqueue_script(
             'productmaster-admin',
             PRODUCTMASTER_URL . 'assets/js/admin.js',
-            array('jquery'),
+            array('jquery', 'jquery-ui-sortable'),
             PRODUCTMASTER_VERSION,
             true
         );
@@ -307,12 +307,57 @@ class ProductMaster_Admin_Portal
 
         echo '<div class="wrap productmaster-wrap">';
         echo '<h1>' . esc_html__('Product Loop', 'productmaster') . '</h1>';
-        echo '<p>' . esc_html__('Create reusable product loop layouts and place them with a shortcode.', 'productmaster') . '</p>';
+        echo '<p>' . esc_html__('Configure one product loop layout and place it with a single shortcode.', 'productmaster') . '</p>';
         if (!empty($notice)) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
         }
         $this->render_product_loop_builder_tab();
         echo '</div>';
+    }
+
+    public function render_product_loop_shortcode($atts)
+    {
+        if (!class_exists('WooCommerce')) {
+            return '';
+        }
+
+        $loop = $this->get_saved_product_loop();
+        $atts = shortcode_atts(
+            array(
+                'columns' => $loop['columns'],
+                'limit' => $loop['limit'],
+            ),
+            $atts,
+            'productmaster_product_loop'
+        );
+
+        $columns = max(1, min(6, absint($atts['columns'])));
+        $limit = max(1, min(60, absint($atts['limit'])));
+        $query = new WP_Query(
+            array(
+                'post_type' => 'product',
+                'post_status' => 'publish',
+                'posts_per_page' => $limit,
+            )
+        );
+
+        if (!$query->have_posts()) {
+            return '<p>' . esc_html__('No products found.', 'productmaster') . '</p>';
+        }
+
+        ob_start();
+        echo '<div class="productmaster-product-loop-grid" style="--pm-loop-columns:' . esc_attr((string) $columns) . ';">';
+        while ($query->have_posts()) {
+            $query->the_post();
+            $product = wc_get_product(get_the_ID());
+            if (!$product) {
+                continue;
+            }
+            echo $this->render_product_loop_card_markup($product, $loop, false);
+        }
+        echo '</div>';
+        wp_reset_postdata();
+        return (string) ob_get_clean();
     }
 
     public function render_review_builder_page()
@@ -956,25 +1001,10 @@ class ProductMaster_Admin_Portal
             return __('Filter presentation updated.', 'productmaster');
         }
 
-        if ('add_product_loop' === $action) {
-            $loops = $this->get_saved_product_loops();
+        if ('save_product_loop' === $action) {
             $settings = $this->sanitize_product_loop_settings($_POST); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-            if (empty($settings['label'])) {
-                return __('Loop name is required.', 'productmaster');
-            }
-            $settings['id'] = sanitize_key(sanitize_title($settings['label']));
-            $loops[] = $settings;
-            update_option(self::LOOP_OPTION_KEY, $loops, false);
-            return __('Product loop saved.', 'productmaster');
-        }
-
-        if ('delete_product_loop' === $action) {
-            $loop_id = isset($_POST['loop_id']) ? sanitize_key(wp_unslash($_POST['loop_id'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-            $loops = array_values(array_filter($this->get_saved_product_loops(), function ($loop) use ($loop_id) {
-                return empty($loop['id']) || $loop['id'] !== $loop_id;
-            }));
-            update_option(self::LOOP_OPTION_KEY, $loops, false);
-            return __('Product loop deleted.', 'productmaster');
+            update_option(self::LOOP_OPTION_KEY, $settings, false);
+            return __('Product loop layout saved.', 'productmaster');
         }
 
 
@@ -2232,73 +2262,321 @@ class ProductMaster_Admin_Portal
 
     private function render_product_loop_builder_tab()
     {
-        $loops = $this->get_saved_product_loops();
+        $loop = $this->get_saved_product_loop();
+        $sample_products = $this->get_loop_preview_products($loop['columns']);
+        $layout_fields = array(
+            'image' => __('Product image', 'productmaster'),
+            'title' => __('Product title', 'productmaster'),
+            'price' => __('Price', 'productmaster'),
+            'description' => __('Description', 'productmaster'),
+            'button' => __('Shop button', 'productmaster'),
+            'brand' => __('Brand names', 'productmaster'),
+            'categories' => __('Main categories', 'productmaster'),
+            'color_variations' => __('Color variations', 'productmaster'),
+        );
+        $ordered_layout_fields = array();
+        foreach ((array) $loop['field_order'] as $field_key) {
+            if (isset($layout_fields[$field_key])) {
+                $ordered_layout_fields[$field_key] = $layout_fields[$field_key];
+            }
+        }
+        foreach ($layout_fields as $field_key => $field_label) {
+            if (!isset($ordered_layout_fields[$field_key])) {
+                $ordered_layout_fields[$field_key] = $field_label;
+            }
+        }
+        $tag_options = $this->get_product_loop_tag_options();
+        $field_styles = isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array();
 
         echo '<section class="productmaster-card">';
-        echo '<h2>' . esc_html__('Create Product Loop', 'productmaster') . '</h2>';
+        echo '<h2>' . esc_html__('Product Loop Builder', 'productmaster') . '</h2>';
         echo '<form method="post">';
         wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
-        echo '<input type="hidden" name="productmaster_action" value="add_product_loop" />';
+        echo '<input type="hidden" name="productmaster_action" value="save_product_loop" />';
         echo '<table class="form-table" role="presentation"><tbody>';
-        echo '<tr><th scope="row"><label for="pm_loop_label">' . esc_html__('Loop Name', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_label" name="label" type="text" required /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="4" /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="12" /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" placeholder="[products]" /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" value="' . esc_attr($loop['shortcode']) . '" /><p class="description">' . esc_html__('Use this shortcode where the loop should render. Default: [productmaster_product_loop]', 'productmaster') . '</p></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="' . esc_attr((string) $loop['columns']) . '" /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="' . esc_attr((string) $loop['limit']) . '" /></td></tr>';
+        echo '<tr><td colspan="2"><fieldset class="productmaster-loop-fields"><h3>' . esc_html__('Card elements', 'productmaster') . '</h3><p class="description">' . esc_html__('Drag elements up or down to set display order.', 'productmaster') . '</p><div class="productmaster-loop-sortable">';
+        foreach ($ordered_layout_fields as $key => $label) {
+            $visible = in_array($key, $loop['visible_fields'], true);
+            $current_tag = isset($loop['field_tags'][$key]) ? $loop['field_tags'][$key] : 'div';
+            $current_style = isset($field_styles[$key]) && is_array($field_styles[$key]) ? $field_styles[$key] : array('bold' => 0, 'italic' => 0, 'font_size' => 16);
+            echo '<div class="productmaster-loop-sortable-item" data-field-key="' . esc_attr($key) . '">';
+            echo '<input type="hidden" name="field_order[]" value="' . esc_attr($key) . '" />';
+            echo '<p><span class="productmaster-drag-handle" aria-hidden="true">↕</span> <label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
+            echo '<label>' . esc_html__('HTML tag', 'productmaster') . ' <select name="field_tags[' . esc_attr($key) . ']">';
+            foreach ($tag_options as $tag => $tag_label) {
+                echo '<option value="' . esc_attr($tag) . '" ' . selected($current_tag, $tag, false) . '>' . esc_html($tag_label) . '</option>';
+            }
+            echo '</select></label> ';
+            echo '<label><input type="checkbox" name="field_styles[' . esc_attr($key) . '][bold]" value="1" ' . checked(!empty($current_style['bold']), true, false) . ' /> ' . esc_html__('Bold', 'productmaster') . '</label> ';
+            echo '<label><input type="checkbox" name="field_styles[' . esc_attr($key) . '][italic]" value="1" ' . checked(!empty($current_style['italic']), true, false) . ' /> ' . esc_html__('Italic', 'productmaster') . '</label> ';
+            echo '<label>' . esc_html__('Font size', 'productmaster') . ' <input type="number" min="10" max="60" name="field_styles[' . esc_attr($key) . '][font_size]" value="' . esc_attr((string) (int) ($current_style['font_size'] ?? 16)) . '" />px</label></p>';
+            echo '</div>';
+        }
+        echo '</div></fieldset></td></tr>';
         echo '</tbody></table>';
-        submit_button(__('Save Product Loop', 'productmaster'));
+        submit_button(__('Save Product Loop Layout', 'productmaster'));
         echo '</form>';
         echo '</section>';
 
         echo '<section class="productmaster-card">';
-        echo '<h2>' . esc_html__('Saved Product Loops', 'productmaster') . '</h2>';
-        if (empty($loops)) {
-            echo '<p>' . esc_html__('No product loops have been saved yet.', 'productmaster') . '</p>';
+        echo '<h2>' . esc_html__('Backend Card Preview', 'productmaster') . '</h2>';
+        if (empty($sample_products)) {
+            echo '<p>' . esc_html__('Add at least one published product to preview the card layout.', 'productmaster') . '</p>';
         } else {
-            echo '<table class="widefat striped"><thead><tr><th>' . esc_html__('Name', 'productmaster') . '</th><th>' . esc_html__('Columns', 'productmaster') . '</th><th>' . esc_html__('Per Page', 'productmaster') . '</th><th>' . esc_html__('Shortcode', 'productmaster') . '</th><th>' . esc_html__('Action', 'productmaster') . '</th></tr></thead><tbody>';
-            foreach ($loops as $loop) {
-                $loop_id = !empty($loop['id']) ? $loop['id'] : sanitize_key(sanitize_title((string) ($loop['label'] ?? '')));
-                $shortcode = '[productmaster_loop id="' . $loop_id . '"]';
-                echo '<tr>';
-                echo '<td>' . esc_html($loop['label'] ?? '') . '</td>';
-                echo '<td>' . esc_html((string) ($loop['columns'] ?? 4)) . '</td>';
-                echo '<td>' . esc_html((string) ($loop['limit'] ?? 12)) . '</td>';
-                echo '<td><code>' . esc_html($shortcode) . '</code></td>';
-                echo '<td><form method="post">';
-                wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
-                echo '<input type="hidden" name="productmaster_action" value="delete_product_loop" />';
-                echo '<input type="hidden" name="loop_id" value="' . esc_attr($loop_id) . '" />';
-                submit_button(__('Delete', 'productmaster'), 'delete small', 'submit', false);
-                echo '</form></td></tr>';
+            echo '<div class="productmaster-loop-preview" style="--pm-loop-columns:' . esc_attr((string) $loop['columns']) . ';">';
+            foreach ($sample_products as $sample_product) {
+                echo $this->render_product_loop_card_markup($sample_product, $loop, true);
             }
-            echo '</tbody></table>';
+            echo '</div>';
         }
         echo '</section>';
     }
 
-    private function get_saved_product_loops()
+    private function get_saved_product_loop()
     {
-        $loops = get_option(self::LOOP_OPTION_KEY, array());
-        if (!is_array($loops)) {
-            return array();
-        }
-
-        return array_values(array_filter($loops, function ($loop) {
-            return is_array($loop) && !empty($loop['label']);
-        }));
+        $loop = get_option(self::LOOP_OPTION_KEY, array());
+        return $this->normalize_product_loop_settings($loop);
     }
 
     private function sanitize_product_loop_settings($data)
     {
-        $label = isset($data['label']) ? sanitize_text_field(wp_unslash($data['label'])) : '';
         $columns = isset($data['columns']) ? absint($data['columns']) : 4;
         $limit = isset($data['limit']) ? absint($data['limit']) : 12;
         $shortcode = isset($data['shortcode']) ? sanitize_text_field(wp_unslash($data['shortcode'])) : '';
+        $visible_fields = isset($data['visible_fields']) ? array_values(array_map('sanitize_key', (array) wp_unslash($data['visible_fields']))) : array();
+        $field_order = isset($data['field_order']) ? (array) wp_unslash($data['field_order']) : array();
+        $field_tags = isset($data['field_tags']) ? (array) wp_unslash($data['field_tags']) : array();
+        $field_styles = isset($data['field_styles']) ? (array) wp_unslash($data['field_styles']) : array();
+        $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
+        $allowed_tags = array_keys($this->get_product_loop_tag_options());
+        $visible_fields = array_values(array_intersect($visible_fields, $allowed_fields));
+        $field_order = array_values(array_intersect(array_map('sanitize_key', (array) $field_order), $allowed_fields));
+        $field_order = array_values(array_unique(array_merge($field_order, $allowed_fields)));
+
+        $sanitized_tags = array();
+        foreach ($allowed_fields as $field_key) {
+            $field_tag = isset($field_tags[$field_key]) ? sanitize_key($field_tags[$field_key]) : '';
+            $sanitized_tags[$field_key] = in_array($field_tag, $allowed_tags, true) ? $field_tag : 'div';
+        }
+        $sanitized_styles = array();
+        foreach ($allowed_fields as $field_key) {
+            $raw_style = isset($field_styles[$field_key]) && is_array($field_styles[$field_key]) ? $field_styles[$field_key] : array();
+            $sanitized_styles[$field_key] = array(
+                'bold' => !empty($raw_style['bold']) ? 1 : 0,
+                'italic' => !empty($raw_style['italic']) ? 1 : 0,
+                'font_size' => max(10, min(60, isset($raw_style['font_size']) ? absint($raw_style['font_size']) : 16)),
+            );
+        }
 
         return array(
-            'label' => $label,
             'columns' => max(1, min(6, $columns)),
             'limit' => max(1, min(60, $limit)),
-            'shortcode' => $shortcode,
+            'shortcode' => empty($shortcode) ? '[productmaster_product_loop]' : $shortcode,
+            'visible_fields' => $visible_fields,
+            'field_order' => $field_order,
+            'field_tags' => $sanitized_tags,
+            'field_styles' => $sanitized_styles,
         );
+    }
+
+    private function get_default_product_loop_settings()
+    {
+        return array(
+            'columns' => 4,
+            'limit' => 12,
+            'shortcode' => '[productmaster_product_loop]',
+            'visible_fields' => array('image', 'title', 'price', 'description', 'color_variations', 'button', 'brand', 'categories'),
+            'field_order' => array('image', 'title', 'price', 'description', 'color_variations', 'button', 'brand', 'categories'),
+            'field_tags' => array(
+                'image' => 'div',
+                'title' => 'h3',
+                'price' => 'p',
+                'description' => 'p',
+                'button' => 'div',
+                'brand' => 'p',
+                'categories' => 'p',
+                'color_variations' => 'div',
+            ),
+            'field_styles' => array(
+                'image' => array('bold' => 0, 'italic' => 0, 'font_size' => 16),
+                'title' => array('bold' => 1, 'italic' => 0, 'font_size' => 20),
+                'price' => array('bold' => 1, 'italic' => 0, 'font_size' => 16),
+                'description' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+                'button' => array('bold' => 0, 'italic' => 0, 'font_size' => 16),
+                'brand' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+                'categories' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+                'color_variations' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+            ),
+        );
+    }
+
+    private function get_product_loop_tag_options()
+    {
+        return array(
+            'div' => 'div',
+            'p' => 'p',
+            'span' => 'span',
+            'h2' => 'h2',
+            'h3' => 'h3',
+            'h4' => 'h4',
+            'section' => 'section',
+            'article' => 'article',
+        );
+    }
+
+    private function get_loop_preview_products($limit)
+    {
+        $preview_limit = max(1, min(6, absint($limit)));
+        $products = wc_get_products(array('limit' => $preview_limit, 'status' => 'publish'));
+        return is_array($products) ? $products : array();
+    }
+
+    private function render_product_loop_card_markup($product, $loop, $is_preview)
+    {
+        $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
+        $visible = isset($loop['visible_fields']) && is_array($loop['visible_fields'])
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['visible_fields']), $allowed_fields))
+            : $allowed_fields;
+        $order = isset($loop['field_order']) && is_array($loop['field_order'])
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['field_order']), $allowed_fields))
+            : $allowed_fields;
+        $all_fields = array_values(array_unique(array_merge($order, $visible)));
+        $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
+        $field_styles = isset($loop['field_styles']) ? (array) $loop['field_styles'] : array();
+        $color_variation_images = $this->get_product_color_variation_images($product);
+        $brand_names = wp_get_post_terms($product->get_id(), 'product_brand', array('fields' => 'names'));
+        $categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'names'));
+        $description = wp_strip_all_tags($product->get_short_description());
+        if (empty($description)) {
+            $description = wp_trim_words(wp_strip_all_tags($product->get_description()), 20);
+        }
+
+        ob_start();
+        echo '<article class="productmaster-loop-card' . ($is_preview ? ' is-preview' : '') . '">';
+        foreach ($all_fields as $field) {
+            if (!in_array($field, $visible, true)) {
+                continue;
+            }
+            if ('color_variations' !== $field) {
+                continue;
+            }
+            $tag = isset($field_tags[$field]) ? sanitize_key((string) $field_tags[$field]) : 'div';
+            $style = isset($field_styles[$field]) && is_array($field_styles[$field]) ? $field_styles[$field] : array();
+            $font_size = max(10, min(60, isset($style['font_size']) ? absint($style['font_size']) : 16));
+            $font_weight = !empty($style['bold']) ? '700' : '400';
+            $font_style = !empty($style['italic']) ? 'italic' : 'normal';
+            $inline_style = 'style="font-size:' . esc_attr((string) $font_size) . 'px;font-weight:' . esc_attr($font_weight) . ';font-style:' . esc_attr($font_style) . ';"';
+            if (!in_array($tag, array_keys($this->get_product_loop_tag_options()), true)) {
+                $tag = 'div';
+            }
+            if ('image' === $field) {
+                $image_html = $product->get_image(
+                    'woocommerce_thumbnail',
+                    array(
+                        'class' => 'productmaster-loop-main-image',
+                        'alt' => $product->get_name(),
+                    )
+                );
+                if (empty($image_html)) {
+                    $placeholder = wc_placeholder_img('woocommerce_thumbnail', array('class' => 'productmaster-loop-main-image'));
+                    $image_html = !empty($placeholder) ? $placeholder : '';
+                }
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $image_html . '</a></' . esc_attr($tag) . '>';
+            } elseif ('title' === $field) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-title" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></' . esc_attr($tag) . '>';
+            } elseif ('price' === $field) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-price" ' . $inline_style . '>' . wp_kses_post($product->get_price_html()) . '</' . esc_attr($tag) . '>';
+            } elseif ('description' === $field && !empty($description)) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-description" ' . $inline_style . '>' . esc_html($description) . '</' . esc_attr($tag) . '>';
+            } elseif ('button' === $field) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-button" ' . $inline_style . '><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></' . esc_attr($tag) . '>';
+            } elseif ('brand' === $field && !empty($brand_names) && !is_wp_error($brand_names)) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand" ' . $inline_style . '>' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
+            } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
+            } elseif ('color_variations' === $field && (!empty($color_variation_images) || $is_preview)) {
+                if (empty($color_variation_images) && $is_preview) {
+                    $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+                    if (!empty($fallback_image)) {
+                        $color_variation_images = array($fallback_image, $fallback_image, $fallback_image);
+                    }
+                }
+                if (empty($color_variation_images)) {
+                    continue;
+                }
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
+                echo '<div class="productmaster-loop-color-slider" aria-label="' . esc_attr__('Color variations', 'productmaster') . '">';
+                foreach ($color_variation_images as $variation_image) {
+                    echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($variation_image) . '" alt="" data-variation-image="' . esc_url($variation_image) . '" />';
+                }
+                echo '</div></' . esc_attr($tag) . '>';
+            }
+        }
+        echo '</article>';
+        return (string) ob_get_clean();
+    }
+
+    private function get_product_color_variation_images($product)
+    {
+        if (!$product || !$product->is_type('variable')) {
+            return array();
+        }
+
+        $images = array();
+        $variations = $product->get_available_variations();
+        foreach ($variations as $variation) {
+            $image_url = '';
+            if (isset($variation['variation_id'])) {
+                $variation_product = wc_get_product((int) $variation['variation_id']);
+                if ($variation_product) {
+                    $variation_image_id = $variation_product->get_image_id();
+                    if (!empty($variation_image_id)) {
+                        $image_url = wp_get_attachment_image_url($variation_image_id, 'woocommerce_thumbnail');
+                    }
+                }
+            }
+            if (empty($image_url) && isset($variation['image']['thumbnail_src'])) {
+                $image_url = (string) $variation['image']['thumbnail_src'];
+            }
+            if (empty($image_url)) {
+                continue;
+            }
+            $images[] = esc_url_raw($image_url);
+        }
+        return array_values(array_unique($images));
+    }
+
+    private function normalize_product_loop_settings($loop)
+    {
+        $defaults = $this->get_default_product_loop_settings();
+        if (!is_array($loop)) {
+            return $defaults;
+        }
+
+        $allowed_fields = array_keys($defaults['field_tags']);
+        $normalized = array_merge($defaults, $loop);
+
+        if (array_key_exists('visible_fields', $loop) && is_array($loop['visible_fields'])) {
+            $normalized['visible_fields'] = array_values(
+                array_intersect(array_map('sanitize_key', $loop['visible_fields']), $allowed_fields)
+            );
+        } else {
+            $normalized['visible_fields'] = $defaults['visible_fields'];
+        }
+
+        $saved_order = isset($loop['field_order']) && is_array($loop['field_order'])
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['field_order']), $allowed_fields))
+            : array();
+        $normalized['field_order'] = array_values(array_unique(array_merge($saved_order, $defaults['field_order'])));
+        $normalized['field_tags'] = array_merge($defaults['field_tags'], isset($loop['field_tags']) && is_array($loop['field_tags']) ? $loop['field_tags'] : array());
+        $normalized['field_styles'] = array_merge($defaults['field_styles'], isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array());
+        foreach ($defaults['field_styles'] as $field_key => $style_defaults) {
+            $normalized['field_styles'][$field_key] = array_merge($style_defaults, isset($normalized['field_styles'][$field_key]) && is_array($normalized['field_styles'][$field_key]) ? $normalized['field_styles'][$field_key] : array());
+        }
+
+        return $normalized;
     }
 }

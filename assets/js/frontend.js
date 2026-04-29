@@ -281,5 +281,26 @@
                 syncChildrenMenuWidths(form);
             });
         });
+
+        var loopCards = document.querySelectorAll('.productmaster-loop-card');
+        loopCards.forEach(function (card) {
+            var mainImage = card.querySelector('.productmaster-loop-main-image');
+            if (!mainImage) {
+                return;
+            }
+            var defaultSrc = mainImage.getAttribute('src');
+            var swatches = card.querySelectorAll('.productmaster-loop-color-swatch[data-variation-image]');
+            swatches.forEach(function (swatch) {
+                swatch.addEventListener('mouseenter', function () {
+                    var targetSrc = swatch.getAttribute('data-variation-image');
+                    if (targetSrc) {
+                        mainImage.setAttribute('src', targetSrc);
+                    }
+                });
+                swatch.addEventListener('mouseleave', function () {
+                    mainImage.setAttribute('src', defaultSrc);
+                });
+            });
+        });
     });
 })();

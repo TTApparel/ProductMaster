@@ -747,6 +747,48 @@ class ProductMaster_Admin_Portal
             if ('search_fields' === $filter['type'] && !empty($raw_value)) {
                 $query->set('s', sanitize_text_field((string) $raw_value));
             }
+
+            if ('multi_filter' === $filter['type'] && !empty($raw_value)) {
+                $selected_pairs = $this->normalize_multi_filter_values($raw_value);
+                $selected_by_source = array();
+                foreach ($selected_pairs as $pair) {
+                    if (false === strpos($pair, ':')) {
+                        continue;
+                    }
+                    list($source_id, $term_slug) = explode(':', $pair, 2);
+                    $source_id = sanitize_key($source_id);
+                    $term_slug = sanitize_title($term_slug);
+                    if ('' === $source_id || '' === $term_slug) {
+                        continue;
+                    }
+                    $selected_by_source[$source_id][] = $term_slug;
+                }
+
+                if (empty($selected_by_source)) {
+                    continue;
+                }
+
+                $filters_by_id = array();
+                foreach ($filters as $saved_filter) {
+                    if (!empty($saved_filter['id'])) {
+                        $filters_by_id[$saved_filter['id']] = $saved_filter;
+                    }
+                }
+
+                foreach ($selected_by_source as $source_id => $source_terms) {
+                    if (empty($filters_by_id[$source_id]['taxonomy'])) {
+                        continue;
+                    }
+                    $source_filter = $filters_by_id[$source_id];
+                    $source_terms = $this->expand_terms_by_manual_hierarchy($source_terms, $source_filter);
+                    $filter_tax_query[] = array(
+                        'taxonomy' => $source_filter['taxonomy'],
+                        'field' => 'slug',
+                        'terms' => array_values(array_unique(array_filter($source_terms))),
+                        'operator' => $this->get_filter_value_match_operator($source_filter),
+                    );
+                }
+            }
         }
 
         $min_price = isset($_GET['pmf_min_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_min_price'])) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -920,6 +962,7 @@ class ProductMaster_Admin_Portal
             'drop_down_selectors' => __('Drop down selectors', 'productmaster'),
             'sliders' => __('Sliders', 'productmaster'),
             'search_fields' => __('Search Fields', 'productmaster'),
+            'multi_filter' => __('Multi-Filter', 'productmaster'),
             'currently_selected_filters' => __('Currently Selected Filters', 'productmaster'),
             'reset_button' => __('Reset Products Button', 'productmaster'),
         );
@@ -985,6 +1028,8 @@ class ProductMaster_Admin_Portal
             echo '<label>' . esc_html__('Max Price', 'productmaster') . ' <input type="number" min="0" step="0.01" name="pmf_max_price" value="' . esc_attr((string) $max) . '" /></label>';
         } elseif ('search_fields' === $filter['type']) {
             echo '<input type="search" name="' . esc_attr($param_key) . '" value="' . esc_attr((string) $selected_value) . '" placeholder="' . esc_attr__('Search products', 'productmaster') . '" />';
+        } elseif ('multi_filter' === $filter['type']) {
+            $this->render_multi_filter_input($filter);
         } elseif ('currently_selected_filters' === $filter['type']) {
             $this->render_currently_selected_filters($filter);
         } elseif ('reset_button' === $filter['type']) {
@@ -1159,9 +1204,23 @@ class ProductMaster_Admin_Portal
         return array(sanitize_title($raw_value));
     }
 
+    private function normalize_multi_filter_values($raw_value)
+    {
+        if (is_array($raw_value)) {
+            return array_values(array_filter(array_map('sanitize_text_field', $raw_value)));
+        }
+
+        if (!is_string($raw_value) || '' === trim($raw_value)) {
+            return array();
+        }
+
+        return array_values(array_filter(array_map('sanitize_text_field', explode(',', $raw_value))));
+    }
+
     private function get_filter_types_without_taxonomy()
     {
         return array(
+            'multi_filter' => true,
             'currently_selected_filters' => true,
             'reset_button' => true,
         );
@@ -1208,8 +1267,18 @@ class ProductMaster_Admin_Portal
         echo '<tr><th><label for="pm_bg_color">' . esc_html__('Background color', 'productmaster') . '</label></th><td><input id="pm_bg_color" name="bg_color" type="text" value="' . esc_attr($presentation['bg_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_text_color">' . esc_html__('Text color', 'productmaster') . '</label></th><td><input id="pm_text_color" name="text_color" type="text" value="' . esc_attr($presentation['text_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_accent_color">' . esc_html__('Accent color', 'productmaster') . '</label></th><td><input id="pm_accent_color" name="accent_color" type="text" value="' . esc_attr($presentation['accent_color']) . '" /></td></tr>';
-        if ($is_currently_selected_filter) {
+        if ($is_currently_selected_filter || (isset($filter['type']) && 'multi_filter' === $filter['type'])) {
             $trackable_filters = $this->get_trackable_filters(isset($filter['id']) ? $filter['id'] : '');
+            if (isset($filter['type']) && 'multi_filter' === $filter['type']) {
+                $trackable_filters = array_values(
+                    array_filter(
+                        $trackable_filters,
+                        function ($trackable_filter) {
+                            return isset($trackable_filter['type']) && 'image_boxes' === $trackable_filter['type'];
+                        }
+                    )
+                );
+            }
             echo '<tr><th><label for="pm_selected_filter_ids">' . esc_html__('Source filters to show', 'productmaster') . '</label></th><td><div id="pm_selected_filter_ids" class="productmaster-term-toggle-list">';
             if (empty($trackable_filters)) {
                 echo '<p>' . esc_html__('No other filters are available yet. Create category/attribute filters first.', 'productmaster') . '</p>';
@@ -1858,6 +1927,49 @@ class ProductMaster_Admin_Portal
         }
 
         echo '</div>';
+    }
+
+    private function render_multi_filter_input($filter)
+    {
+        $param_key = 'pmf_' . $filter['id'];
+        $selected_pairs = $this->normalize_multi_filter_values(isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $selected_lookup = array_fill_keys($selected_pairs, true);
+        $source_ids = isset($filter['presentation']['selected_filter_ids']) ? (array) $filter['presentation']['selected_filter_ids'] : array();
+
+        $source_filters = array_values(
+            array_filter(
+                $this->get_saved_taxonomy_filters(),
+                function ($saved_filter) use ($filter, $source_ids) {
+                    if (empty($saved_filter['id']) || empty($saved_filter['taxonomy']) || empty($saved_filter['type'])) {
+                        return false;
+                    }
+                    if ($saved_filter['id'] === $filter['id'] || 'image_boxes' !== $saved_filter['type']) {
+                        return false;
+                    }
+
+                    return empty($source_ids) || in_array($saved_filter['id'], $source_ids, true);
+                }
+            )
+        );
+
+        if (empty($source_filters)) {
+            echo '<p>' . esc_html__('No source image filters configured.', 'productmaster') . '</p>';
+            return;
+        }
+
+        foreach ($source_filters as $source_filter) {
+            $terms = get_terms(array('taxonomy' => $source_filter['taxonomy'], 'hide_empty' => false));
+            if (is_wp_error($terms) || empty($terms)) {
+                continue;
+            }
+            echo '<details class="productmaster-hierarchical-children"><summary class="productmaster-hierarchical-summary">' . esc_html($source_filter['label']) . '</summary><div class="productmaster-hierarchical-nested">';
+            foreach ($terms as $term) {
+                $value = $source_filter['id'] . ':' . $term->slug;
+                $checked = isset($selected_lookup[$value]);
+                echo '<label><input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($value) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+            }
+            echo '</div></details>';
+        }
     }
 
     private function expand_terms_by_manual_hierarchy($terms, $filter)

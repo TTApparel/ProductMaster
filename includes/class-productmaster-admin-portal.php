@@ -6,6 +6,7 @@ if (!defined('ABSPATH')) {
 
 class ProductMaster_Admin_Portal
 {
+    const MULTI_FILTER_PARENT_TOKEN_PREFIX = '__parent__';
     const PAGE_SLUG = 'productmaster-portal';
     const PRODUCT_TOOLS_SLUG = 'productmaster-product-tools';
     const TAXONOMY_FILTERS_SLUG = 'productmaster-taxonomy-filters';
@@ -882,7 +883,7 @@ class ProductMaster_Admin_Portal
                     }
                     list($source_id, $term_slug) = explode(':', $pair, 2);
                     $source_id = sanitize_key($source_id);
-                    $term_slug = sanitize_title($term_slug);
+                    $term_slug = $this->normalize_multi_filter_term_token($term_slug);
                     if ('' === $source_id || '' === $term_slug) {
                         continue;
                     }
@@ -897,7 +898,15 @@ class ProductMaster_Admin_Portal
                         continue;
                     }
                     $source_filter = $filters_by_id[$source_id];
-                    $source_terms = $this->expand_terms_by_manual_hierarchy($source_terms, $source_filter);
+                    $resolved_source_terms = array();
+                    foreach ((array) $source_terms as $source_term_token) {
+                        $lookup_slug = $this->get_multi_filter_term_slug_for_lookup($source_term_token);
+                        $resolved_source_terms[] = $lookup_slug;
+                        if (0 === strpos($source_term_token, self::MULTI_FILTER_PARENT_TOKEN_PREFIX)) {
+                            $resolved_source_terms = array_merge($resolved_source_terms, $this->expand_terms_by_manual_hierarchy(array($lookup_slug), $source_filter));
+                        }
+                    }
+                    $source_terms = $this->expand_terms_by_manual_hierarchy($resolved_source_terms, $source_filter);
                     $multi_filter_source_queries[] = array(
                         'taxonomy' => $source_filter['taxonomy'],
                         'field' => 'slug',
@@ -1368,7 +1377,7 @@ class ProductMaster_Admin_Portal
             }
             list($source_id, $term_slug) = explode(':', $selected_pair, 2);
             $source_id = sanitize_key($source_id);
-            $term_slug = sanitize_title($term_slug);
+            $term_slug = $this->normalize_multi_filter_term_token($term_slug);
             if ('' === $source_id || '' === $term_slug) {
                 continue;
             }
@@ -1385,7 +1394,8 @@ class ProductMaster_Admin_Portal
             $selected_term_ids = array();
             $term_id_by_slug = array();
             foreach (array_values(array_unique($source_slugs)) as $source_slug) {
-                $term = get_term_by('slug', $source_slug, $taxonomy);
+                $lookup_slug = $this->get_multi_filter_term_slug_for_lookup($source_slug);
+                $term = get_term_by('slug', $lookup_slug, $taxonomy);
                 if (!$term || is_wp_error($term)) {
                     continue;
                 }
@@ -1418,6 +1428,24 @@ class ProductMaster_Admin_Portal
         return $pruned;
     }
 
+    private function normalize_multi_filter_term_token($term_slug)
+    {
+        if (0 === strpos($term_slug, self::MULTI_FILTER_PARENT_TOKEN_PREFIX)) {
+            return self::MULTI_FILTER_PARENT_TOKEN_PREFIX . sanitize_title(substr($term_slug, strlen(self::MULTI_FILTER_PARENT_TOKEN_PREFIX)));
+        }
+
+        return sanitize_title($term_slug);
+    }
+
+    private function get_multi_filter_term_slug_for_lookup($term_token)
+    {
+        if (0 === strpos($term_token, self::MULTI_FILTER_PARENT_TOKEN_PREFIX)) {
+            return sanitize_title(substr($term_token, strlen(self::MULTI_FILTER_PARENT_TOKEN_PREFIX)));
+        }
+
+        return sanitize_title($term_token);
+    }
+
     private function translate_multi_filter_values($selected_values)
     {
         $translated = array();
@@ -1445,7 +1473,7 @@ class ProductMaster_Admin_Portal
         $selected_values = $this->prune_multi_filter_descendants($selected_values, $filters_by_id);
         $displayable_by_source = array();
         foreach ($selected_by_source as $source_id => $source_slugs) {
-            $source_slugs = array_values(array_unique(array_filter(array_map('sanitize_title', (array) $source_slugs))));
+            $source_slugs = array_values(array_unique(array_filter(array_map(array($this, 'normalize_multi_filter_term_token'), (array) $source_slugs))));
             if (empty($filters_by_id[$source_id]['taxonomy'])) {
                 $displayable_by_source[$source_id] = $source_slugs;
                 continue;
@@ -1455,7 +1483,7 @@ class ProductMaster_Admin_Portal
             $selected_term_ids = array();
             $terms_by_slug = array();
             foreach ($source_slugs as $source_slug) {
-                $source_term = get_term_by('slug', $source_slug, $taxonomy);
+                $source_term = get_term_by('slug', $this->get_multi_filter_term_slug_for_lookup($source_slug), $taxonomy);
                 if (!$source_term || is_wp_error($source_term)) {
                     continue;
                 }
@@ -1494,7 +1522,7 @@ class ProductMaster_Admin_Portal
 
             list($source_id, $term_slug) = explode(':', $selected_value, 2);
             $source_id = sanitize_key($source_id);
-            $term_slug = sanitize_title($term_slug);
+            $term_slug = $this->normalize_multi_filter_term_token($term_slug);
             if (empty($displayable_by_source[$source_id]) || !in_array($term_slug, $displayable_by_source[$source_id], true)) {
                 continue;
             }
@@ -1504,7 +1532,7 @@ class ProductMaster_Admin_Portal
                 continue;
             }
 
-            $term = get_term_by('slug', $term_slug, $filters_by_id[$source_id]['taxonomy']);
+            $term = get_term_by('slug', $this->get_multi_filter_term_slug_for_lookup($term_slug), $filters_by_id[$source_id]['taxonomy']);
             if ($term && !is_wp_error($term) && !empty($term->name)) {
                 $translated[] = $term->name;
             } else {
@@ -2352,7 +2380,7 @@ class ProductMaster_Admin_Portal
             echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($source_filter['id']) . '" /> ' . esc_html($source_filter['label']) . '</label>';
             echo '<div class="productmaster-image-children-grid">';
             foreach ($parent_only_terms as $term) {
-                $value = $source_filter['id'] . ':' . $term->slug;
+                $value = $source_filter['id'] . ':' . self::MULTI_FILTER_PARENT_TOKEN_PREFIX . $term->slug;
                 $checked = isset($selected_lookup[$value]);
                 $term_image = $this->resolve_term_image_url($term, $source_presentation);
                 $child_slugs = isset($manual_hierarchy[$term->slug]) && is_array($manual_hierarchy[$term->slug]) ? $manual_hierarchy[$term->slug] : array();

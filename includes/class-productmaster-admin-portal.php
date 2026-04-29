@@ -2453,6 +2453,7 @@ class ProductMaster_Admin_Portal
             'categories' => __('Main categories', 'productmaster'),
         );
         $tag_options = $this->get_product_loop_tag_options();
+        $field_styles = isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array();
 
         echo '<section class="productmaster-card">';
         echo '<h2>' . esc_html__('Product Loop Builder', 'productmaster') . '</h2>';
@@ -2468,13 +2469,17 @@ class ProductMaster_Admin_Portal
             $visible = in_array($key, $loop['visible_fields'], true);
             $order = array_search($key, $loop['field_order'], true);
             $current_tag = isset($loop['field_tags'][$key]) ? $loop['field_tags'][$key] : 'div';
+            $current_style = isset($field_styles[$key]) && is_array($field_styles[$key]) ? $field_styles[$key] : array('bold' => 0, 'italic' => 0, 'font_size' => 16);
             echo '<p><label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
             echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="7" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label> ';
             echo '<label>' . esc_html__('HTML tag', 'productmaster') . ' <select name="field_tags[' . esc_attr($key) . ']">';
             foreach ($tag_options as $tag => $tag_label) {
                 echo '<option value="' . esc_attr($tag) . '" ' . selected($current_tag, $tag, false) . '>' . esc_html($tag_label) . '</option>';
             }
-            echo '</select></label></p>';
+            echo '</select></label> ';
+            echo '<label><input type="checkbox" name="field_styles[' . esc_attr($key) . '][bold]" value="1" ' . checked(!empty($current_style['bold']), true, false) . ' /> ' . esc_html__('Bold', 'productmaster') . '</label> ';
+            echo '<label><input type="checkbox" name="field_styles[' . esc_attr($key) . '][italic]" value="1" ' . checked(!empty($current_style['italic']), true, false) . ' /> ' . esc_html__('Italic', 'productmaster') . '</label> ';
+            echo '<label>' . esc_html__('Font size', 'productmaster') . ' <input type="number" min="10" max="60" name="field_styles[' . esc_attr($key) . '][font_size]" value="' . esc_attr((string) (int) ($current_style['font_size'] ?? 16)) . '" />px</label></p>';
         }
         echo '</fieldset></td></tr>';
         echo '</tbody></table>';
@@ -2514,6 +2519,7 @@ class ProductMaster_Admin_Portal
         $visible_fields = isset($data['visible_fields']) ? array_values(array_map('sanitize_key', (array) wp_unslash($data['visible_fields']))) : array();
         $field_order = isset($data['field_order']) ? (array) wp_unslash($data['field_order']) : array();
         $field_tags = isset($data['field_tags']) ? (array) wp_unslash($data['field_tags']) : array();
+        $field_styles = isset($data['field_styles']) ? (array) wp_unslash($data['field_styles']) : array();
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories');
         $allowed_tags = array_keys($this->get_product_loop_tag_options());
         $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
@@ -2530,6 +2536,15 @@ class ProductMaster_Admin_Portal
             $field_tag = isset($field_tags[$field_key]) ? sanitize_key($field_tags[$field_key]) : '';
             $sanitized_tags[$field_key] = in_array($field_tag, $allowed_tags, true) ? $field_tag : 'div';
         }
+        $sanitized_styles = array();
+        foreach ($allowed_fields as $field_key) {
+            $raw_style = isset($field_styles[$field_key]) && is_array($field_styles[$field_key]) ? $field_styles[$field_key] : array();
+            $sanitized_styles[$field_key] = array(
+                'bold' => !empty($raw_style['bold']) ? 1 : 0,
+                'italic' => !empty($raw_style['italic']) ? 1 : 0,
+                'font_size' => max(10, min(60, isset($raw_style['font_size']) ? absint($raw_style['font_size']) : 16)),
+            );
+        }
 
         return array(
             'columns' => max(1, min(6, $columns)),
@@ -2538,6 +2553,7 @@ class ProductMaster_Admin_Portal
             'visible_fields' => $visible_fields,
             'field_order' => array_keys($sort_map),
             'field_tags' => $sanitized_tags,
+            'field_styles' => $sanitized_styles,
         );
     }
 
@@ -2557,6 +2573,15 @@ class ProductMaster_Admin_Portal
                 'button' => 'div',
                 'brand' => 'p',
                 'categories' => 'p',
+            ),
+            'field_styles' => array(
+                'image' => array('bold' => 0, 'italic' => 0, 'font_size' => 16),
+                'title' => array('bold' => 1, 'italic' => 0, 'font_size' => 20),
+                'price' => array('bold' => 1, 'italic' => 0, 'font_size' => 16),
+                'description' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+                'button' => array('bold' => 0, 'italic' => 0, 'font_size' => 16),
+                'brand' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+                'categories' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
             ),
         );
     }
@@ -2588,6 +2613,7 @@ class ProductMaster_Admin_Portal
         $order = isset($loop['field_order']) ? (array) $loop['field_order'] : array();
         $all_fields = array_unique(array_merge($order, array('image', 'title', 'price', 'description', 'button', 'brand', 'categories')));
         $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
+        $field_styles = isset($loop['field_styles']) ? (array) $loop['field_styles'] : array();
         $brand_names = wp_get_post_terms($product->get_id(), 'product_brand', array('fields' => 'names'));
         $categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'names'));
         $description = wp_strip_all_tags($product->get_short_description());
@@ -2602,23 +2628,28 @@ class ProductMaster_Admin_Portal
                 continue;
             }
             $tag = isset($field_tags[$field]) ? sanitize_key((string) $field_tags[$field]) : 'div';
+            $style = isset($field_styles[$field]) && is_array($field_styles[$field]) ? $field_styles[$field] : array();
+            $font_size = max(10, min(60, isset($style['font_size']) ? absint($style['font_size']) : 16));
+            $font_weight = !empty($style['bold']) ? '700' : '400';
+            $font_style = !empty($style['italic']) ? 'italic' : 'normal';
+            $inline_style = 'style="font-size:' . esc_attr((string) $font_size) . 'px;font-weight:' . esc_attr($font_weight) . ';font-style:' . esc_attr($font_style) . ';"';
             if (!in_array($tag, array_keys($this->get_product_loop_tag_options()), true)) {
                 $tag = 'div';
             }
             if ('image' === $field) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $product->get_image('woocommerce_thumbnail') . '</a></' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $product->get_image('woocommerce_thumbnail') . '</a></' . esc_attr($tag) . '>';
             } elseif ('title' === $field) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-title"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-title" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></' . esc_attr($tag) . '>';
             } elseif ('price' === $field) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-price">' . wp_kses_post($product->get_price_html()) . '</' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-price" ' . $inline_style . '>' . wp_kses_post($product->get_price_html()) . '</' . esc_attr($tag) . '>';
             } elseif ('description' === $field && !empty($description)) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-description">' . esc_html($description) . '</' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-description" ' . $inline_style . '>' . esc_html($description) . '</' . esc_attr($tag) . '>';
             } elseif ('button' === $field) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-button"><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-button" ' . $inline_style . '><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></' . esc_attr($tag) . '>';
             } elseif ('brand' === $field && !empty($brand_names) && !is_wp_error($brand_names)) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand">' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand" ' . $inline_style . '>' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories">' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
             }
         }
         echo '</article>';

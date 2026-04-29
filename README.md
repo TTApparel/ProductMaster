@@ -60,6 +60,7 @@ Implemented:
 - 2026-04-29: Product Loop builder now includes per-element HTML tag selectors (to inherit theme-default tag styling) and backend preview now respects configured column count by rendering multiple sample cards in the selected grid.
 - 2026-04-29: Product Loop card/grid CSS now constrains each card to its grid column (`minmax(0,1fr)`, `min-width:0`, image max-width) so cards no longer stack as full-width rows when column counts are set.
 - 2026-04-29: Product Loop card content padding was removed from frontend cards and brand/category labels were simplified to values only (no “Brand:” / “Categories:” prefixes).
+- 2026-04-29: Product Loop builder now includes per-element typography controls (bold, italic, font size) applied to each card element in preview and frontend output.
 
 ## Requirements
 

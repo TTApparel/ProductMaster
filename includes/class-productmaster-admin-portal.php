@@ -2353,11 +2353,16 @@ class ProductMaster_Admin_Portal
             }
 
             $parent_only_terms = array();
-            $manual_hierarchy = isset($source_presentation['hierarchy_map']) && is_array($source_presentation['hierarchy_map']) ? $source_presentation['hierarchy_map'] : array();
+            $manual_hierarchy = isset($source_presentation['hierarchy_map']) && is_array($source_presentation['hierarchy_map']) ? $this->normalize_hierarchy_map_for_lookup($source_presentation['hierarchy_map']) : array();
+            $normalized_terms_by_slug = $this->build_normalized_term_slug_lookup($terms_by_slug);
             if (!empty($manual_hierarchy)) {
                 foreach (array_keys($manual_hierarchy) as $parent_slug) {
                     if (isset($terms_by_slug[$parent_slug])) {
                         $parent_only_terms[] = $terms_by_slug[$parent_slug];
+                        continue;
+                    }
+                    if (isset($normalized_terms_by_slug[$parent_slug], $terms_by_slug[$normalized_terms_by_slug[$parent_slug]])) {
+                        $parent_only_terms[] = $terms_by_slug[$normalized_terms_by_slug[$parent_slug]];
                     }
                 }
             } else {
@@ -2391,6 +2396,12 @@ class ProductMaster_Admin_Portal
                 $checked = isset($selected_lookup[$value]);
                 $term_image = $this->resolve_term_image_url($term, $source_presentation);
                 $child_slugs = isset($manual_hierarchy[$term->slug]) && is_array($manual_hierarchy[$term->slug]) ? $manual_hierarchy[$term->slug] : array();
+                if (empty($child_slugs)) {
+                    $normalized_parent_slug = sanitize_title((string) $term->slug);
+                    if (isset($manual_hierarchy[$normalized_parent_slug]) && is_array($manual_hierarchy[$normalized_parent_slug])) {
+                        $child_slugs = $manual_hierarchy[$normalized_parent_slug];
+                    }
+                }
                 if (empty($child_slugs) && !empty($children_by_parent_slug[$term->slug])) {
                     $child_slugs = $children_by_parent_slug[$term->slug];
                 }
@@ -2409,6 +2420,10 @@ class ProductMaster_Admin_Portal
                     echo '<label class="productmaster-image-children-header">' . esc_html($term->name) . '</label>';
                     echo '<div class="productmaster-image-children-grid">';
                     foreach ($child_slugs as $child_slug) {
+                        $child_slug = sanitize_title((string) $child_slug);
+                        if (isset($normalized_terms_by_slug[$child_slug])) {
+                            $child_slug = $normalized_terms_by_slug[$child_slug];
+                        }
                         if (!isset($terms_by_slug[$child_slug])) {
                             continue;
                         }
@@ -2431,6 +2446,40 @@ class ProductMaster_Admin_Portal
             echo '</div></div></div>';
         }
         echo '</div>';
+    }
+
+    private function normalize_hierarchy_map_for_lookup($hierarchy_map)
+    {
+        $normalized = array();
+        foreach ((array) $hierarchy_map as $parent_slug => $child_slugs) {
+            $clean_parent_slug = sanitize_title((string) $parent_slug);
+            if ('' === $clean_parent_slug) {
+                continue;
+            }
+            $normalized[$clean_parent_slug] = array_values(
+                array_unique(
+                    array_filter(
+                        array_map('sanitize_title', (array) $child_slugs)
+                    )
+                )
+            );
+        }
+
+        return $normalized;
+    }
+
+    private function build_normalized_term_slug_lookup($terms_by_slug)
+    {
+        $lookup = array();
+        foreach ((array) $terms_by_slug as $term_slug => $term) {
+            $normalized_slug = sanitize_title((string) $term_slug);
+            if ('' === $normalized_slug || isset($lookup[$normalized_slug])) {
+                continue;
+            }
+            $lookup[$normalized_slug] = $term_slug;
+        }
+
+        return $lookup;
     }
 
     private function expand_terms_by_manual_hierarchy($terms, $filter)

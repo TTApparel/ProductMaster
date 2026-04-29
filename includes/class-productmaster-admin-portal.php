@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 class ProductMaster_Admin_Portal
 {
     const PAGE_SLUG = 'productmaster-portal';
-    const REVIEW_TOOLS_SLUG = 'productmaster-review-tools';
+    const PRODUCT_TOOLS_SLUG = 'productmaster-product-tools';
     const TAXONOMY_FILTERS_SLUG = 'productmaster-taxonomy-filters';
     const REVIEW_BUILDER_SLUG = 'productmaster-review-builder';
     const PER_PAGE = 20;
@@ -36,11 +36,11 @@ class ProductMaster_Admin_Portal
 
         add_submenu_page(
             self::PAGE_SLUG,
-            __('Review Tools', 'productmaster'),
-            __('Review Tools', 'productmaster'),
+            __('Product Tools', 'productmaster'),
+            __('Product Tools', 'productmaster'),
             'manage_woocommerce',
-            self::REVIEW_TOOLS_SLUG,
-            array($this, 'render_review_tools_page')
+            self::PRODUCT_TOOLS_SLUG,
+            array($this, 'render_product_tools_page')
         );
 
         add_submenu_page(
@@ -66,7 +66,7 @@ class ProductMaster_Admin_Portal
     {
         $allowed_hooks = array(
             'toplevel_page_' . self::PAGE_SLUG,
-            'productmaster_page_' . self::REVIEW_TOOLS_SLUG,
+            'productmaster_page_' . self::PRODUCT_TOOLS_SLUG,
             'productmaster_page_' . self::TAXONOMY_FILTERS_SLUG,
             'productmaster_page_' . self::REVIEW_BUILDER_SLUG,
         );
@@ -158,12 +158,50 @@ class ProductMaster_Admin_Portal
         echo '</div>';
     }
 
-    public function render_review_tools_page()
+    public function render_product_tools_page()
     {
-        $this->render_placeholder_page(
-            __('Review Tools', 'productmaster'),
-            __('This workspace is reserved for review import and moderation workflows.', 'productmaster')
-        );
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(esc_html__('You do not have permission to access this page.', 'productmaster'));
+        }
+
+        echo '<div class="wrap productmaster-wrap">';
+        echo '<h1>' . esc_html__('Product Tools', 'productmaster') . '</h1>';
+        echo '<p>' . esc_html__('Manage grouped product tooling, including review workflows and product image presentation settings.', 'productmaster') . '</p>';
+
+        echo '<section class="productmaster-card">';
+        echo '<h2>' . esc_html__('Review Tools', 'productmaster') . '</h2>';
+        echo '<p>' . esc_html__('To be determined: maintain a curated list of review-focused tools for import, moderation, and enrichment workflows.', 'productmaster') . '</p>';
+        echo '<ul>';
+        echo '<li>' . esc_html__('Review import connectors (TBD)', 'productmaster') . '</li>';
+        echo '<li>' . esc_html__('Review moderation queue (TBD)', 'productmaster') . '</li>';
+        echo '<li>' . esc_html__('Review quality checks and flags (TBD)', 'productmaster') . '</li>';
+        echo '</ul>';
+        echo '</section>';
+
+        echo '<section class="productmaster-card">';
+        echo '<h2>' . esc_html__('Product Image Tool', 'productmaster') . '</h2>';
+        echo '<p>' . esc_html__('Control how the primary product image and associated gallery images behave across device sizes and variation activity.', 'productmaster') . '</p>';
+        echo '<table class="form-table" role="presentation"><tbody>';
+        echo '<tr><th scope="row">' . esc_html__('Main image layout by device', 'productmaster') . '</th><td>';
+        echo '<label>' . esc_html__('Mobile', 'productmaster') . ': ';
+        echo '<select disabled><option>' . esc_html__('Standard (TBD)', 'productmaster') . '</option><option>' . esc_html__('Cropped (TBD)', 'productmaster') . '</option><option>' . esc_html__('Contain (TBD)', 'productmaster') . '</option></select></label><br />';
+        echo '<label>' . esc_html__('Tablet', 'productmaster') . ': ';
+        echo '<select disabled><option>' . esc_html__('Standard (TBD)', 'productmaster') . '</option><option>' . esc_html__('Cropped (TBD)', 'productmaster') . '</option><option>' . esc_html__('Contain (TBD)', 'productmaster') . '</option></select></label><br />';
+        echo '<label>' . esc_html__('Desktop', 'productmaster') . ': ';
+        echo '<select disabled><option>' . esc_html__('Standard (TBD)', 'productmaster') . '</option><option>' . esc_html__('Cropped (TBD)', 'productmaster') . '</option><option>' . esc_html__('Contain (TBD)', 'productmaster') . '</option></select></label>';
+        echo '</td></tr>';
+        echo '<tr><th scope="row">' . esc_html__('Associated image carousel position', 'productmaster') . '</th><td>';
+        echo '<select disabled><option>' . esc_html__('Underneath', 'productmaster') . '</option><option>' . esc_html__('Left side', 'productmaster') . '</option><option>' . esc_html__('Right side', 'productmaster') . '</option><option>' . esc_html__('Top', 'productmaster') . '</option></select>';
+        echo '</td></tr>';
+        echo '<tr><th scope="row">' . esc_html__('Main image shift on color variation activity', 'productmaster') . '</th><td>';
+        echo '<select disabled><option>' . esc_html__('No shift (TBD)', 'productmaster') . '</option><option>' . esc_html__('Swap to matching variation image (TBD)', 'productmaster') . '</option><option>' . esc_html__('Animate cross-fade (TBD)', 'productmaster') . '</option><option>' . esc_html__('Slide transition (TBD)', 'productmaster') . '</option></select>';
+        echo '<p class="description">' . esc_html__('Planned behavior: automatically adapt the main image when a shopper changes color options.', 'productmaster') . '</p>';
+        echo '</td></tr>';
+        echo '</tbody></table>';
+        echo '<p><em>' . esc_html__('This section defines structure and options first; persistence and frontend rendering hooks can be connected next.', 'productmaster') . '</em></p>';
+        echo '</section>';
+
+        echo '</div>';
     }
 
     public function render_taxonomy_filters_page()

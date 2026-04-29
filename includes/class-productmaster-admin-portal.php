@@ -10,8 +10,10 @@ class ProductMaster_Admin_Portal
     const REVIEW_TOOLS_SLUG = 'productmaster-review-tools';
     const TAXONOMY_FILTERS_SLUG = 'productmaster-taxonomy-filters';
     const REVIEW_BUILDER_SLUG = 'productmaster-review-builder';
+    const PRODUCT_LOOP_SLUG = 'productmaster-product-loop';
     const PER_PAGE = 20;
     const FILTER_OPTION_KEY = 'productmaster_taxonomy_filters';
+    const LOOP_OPTION_KEY = 'productmaster_product_loops';
 
     public function register_menu()
     {
@@ -54,6 +56,15 @@ class ProductMaster_Admin_Portal
 
         add_submenu_page(
             self::PAGE_SLUG,
+            __('Product Loop', 'productmaster'),
+            __('Product Loop', 'productmaster'),
+            'manage_woocommerce',
+            self::PRODUCT_LOOP_SLUG,
+            array($this, 'render_product_loop_page')
+        );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
             __('Review Builder', 'productmaster'),
             __('Review Builder', 'productmaster'),
             'manage_woocommerce',
@@ -68,6 +79,7 @@ class ProductMaster_Admin_Portal
             'toplevel_page_' . self::PAGE_SLUG,
             'productmaster_page_' . self::REVIEW_TOOLS_SLUG,
             'productmaster_page_' . self::TAXONOMY_FILTERS_SLUG,
+            'productmaster_page_' . self::PRODUCT_LOOP_SLUG,
             'productmaster_page_' . self::REVIEW_BUILDER_SLUG,
         );
 
@@ -177,14 +189,11 @@ class ProductMaster_Admin_Portal
         $taxonomy_options = $this->get_taxonomy_options();
         $editing_filter = $this->get_editing_filter($filters);
 
-        echo '<div class="wrap productmaster-wrap">';
-        echo '<h1>' . esc_html__('Taxonomy Filters', 'productmaster') . '</h1>';
-        echo '<p>' . esc_html__('Create shortcode-driven product loop filters using existing product categories and attributes.', 'productmaster') . '</p>';
-
         if (!empty($notice)) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
         }
 
+        if ('filters' === $active_tab) {
         echo '<section class="productmaster-card">';
         echo '<h2>' . esc_html__('Create New Filter', 'productmaster') . '</h2>';
         echo '<form method="post">';
@@ -247,6 +256,30 @@ class ProductMaster_Admin_Portal
         if (!empty($editing_filter)) {
             $this->render_filter_presentation_editor($editing_filter);
         }
+        }
+
+        if ('product_loop' === $active_tab) {
+            $this->render_product_loop_builder_tab();
+        }
+        echo '</div>';
+    }
+
+
+    public function render_product_loop_page()
+    {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(esc_html__('You do not have permission to access this page.', 'productmaster'));
+        }
+
+        $notice = $this->handle_taxonomy_filter_actions();
+
+        echo '<div class="wrap productmaster-wrap">';
+        echo '<h1>' . esc_html__('Product Loop', 'productmaster') . '</h1>';
+        echo '<p>' . esc_html__('Create reusable product loop layouts and place them with a shortcode.', 'productmaster') . '</p>';
+        if (!empty($notice)) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
+        }
+        $this->render_product_loop_builder_tab();
         echo '</div>';
     }
 
@@ -890,6 +923,28 @@ class ProductMaster_Admin_Portal
             update_option(self::FILTER_OPTION_KEY, $filters, false);
             return __('Filter presentation updated.', 'productmaster');
         }
+
+        if ('add_product_loop' === $action) {
+            $loops = $this->get_saved_product_loops();
+            $settings = $this->sanitize_product_loop_settings($_POST); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            if (empty($settings['label'])) {
+                return __('Loop name is required.', 'productmaster');
+            }
+            $settings['id'] = sanitize_key(sanitize_title($settings['label']));
+            $loops[] = $settings;
+            update_option(self::LOOP_OPTION_KEY, $loops, false);
+            return __('Product loop saved.', 'productmaster');
+        }
+
+        if ('delete_product_loop' === $action) {
+            $loop_id = isset($_POST['loop_id']) ? sanitize_key(wp_unslash($_POST['loop_id'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            $loops = array_values(array_filter($this->get_saved_product_loops(), function ($loop) use ($loop_id) {
+                return empty($loop['id']) || $loop['id'] !== $loop_id;
+            }));
+            update_option(self::LOOP_OPTION_KEY, $loops, false);
+            return __('Product loop deleted.', 'productmaster');
+        }
+
 
         return '';
     }

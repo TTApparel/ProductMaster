@@ -1158,7 +1158,11 @@ class ProductMaster_Admin_Portal
                     );
                 }
             } elseif (!empty($raw_value)) {
-                $selected_values = $this->normalize_filter_values($raw_value);
+                if (isset($tracked_filter['type']) && 'multi_filter' === $tracked_filter['type']) {
+                    $selected_values = $this->normalize_multi_filter_values($raw_value);
+                } else {
+                    $selected_values = $this->normalize_filter_values($raw_value);
+                }
             } elseif ('drop_down_selectors' === $tracked_filter['type']) {
                 $parent = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $child = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

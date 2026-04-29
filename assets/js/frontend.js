@@ -65,30 +65,33 @@
             input.parentNode.removeChild(input);
         });
 
-        var arrayInputs = form.querySelectorAll('input[name$="[]"]');
-        arrayInputs.forEach(function (input) {
+        var checkboxInputs = form.querySelectorAll('input[type="checkbox"][name^="pmf_"]');
+        checkboxInputs.forEach(function (input) {
             if (input.disabled || !input.checked) {
                 return;
             }
 
-            var originalName = input.name;
-            if (!groupedValues[originalName]) {
-                groupedValues[originalName] = [];
+            var inputName = input.name;
+            if (!groupedValues[inputName]) {
+                groupedValues[inputName] = [];
             }
-            groupedValues[originalName].push(input.value);
+            groupedValues[inputName].push(input.value);
         });
 
-        Object.keys(groupedValues).forEach(function (arrayName) {
-            var normalizedName = arrayName.slice(0, -2);
+        Object.keys(groupedValues).forEach(function (inputName) {
+            var allInputsForName = form.querySelectorAll('input[type="checkbox"][name="' + inputName.replace(/"/g, '\\"') + '"]');
+            if (allInputsForName.length < 2) {
+                return;
+            }
+
             var hidden = document.createElement('input');
             hidden.type = 'hidden';
-            hidden.name = normalizedName;
-            hidden.value = groupedValues[arrayName].join(',');
+            hidden.name = inputName;
+            hidden.value = groupedValues[inputName].join(',');
             hidden.className = 'productmaster-normalized-array-param';
             form.appendChild(hidden);
 
-            var inputsToDisable = form.querySelectorAll('input[name="' + arrayName.replace(/"/g, '\\"') + '"]');
-            inputsToDisable.forEach(function (input) {
+            allInputsForName.forEach(function (input) {
                 input.disabled = true;
                 toggledInputs.push(input);
             });

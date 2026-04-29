@@ -953,7 +953,7 @@ class ProductMaster_Admin_Portal
                     }
                     $checked = in_array($term->slug, $selected_values, true);
                     $class = 'image_boxes' === $filter['type'] ? 'productmaster-image-box' : '';
-                    echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+                    echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
                 }
             }
         } elseif ('image_boxes' === $filter['type']) {
@@ -1476,13 +1476,13 @@ class ProductMaster_Admin_Portal
             echo '<div class="productmaster-hierarchical-parent">';
             if ($has_children) {
                 echo '<details class="productmaster-hierarchical-children"' . $open_attr . '>';
-                echo '<summary class="productmaster-hierarchical-summary"><span class="productmaster-hierarchical-marker" aria-hidden="true">▸</span><label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label></summary>';
+                echo '<summary class="productmaster-hierarchical-summary"><span class="productmaster-hierarchical-marker" aria-hidden="true">▸</span><label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label></summary>';
                 echo '<div class="productmaster-hierarchical-nested">';
                 $this->render_hierarchical_term_nodes($terms_by_parent, $term_id, $filter, $param_key, $selected_value, $presentation);
                 echo '</div>';
                 echo '</details>';
             } else {
-                echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+                echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
             }
             echo '</div>';
         }
@@ -1730,7 +1730,7 @@ class ProductMaster_Admin_Portal
 
                 echo '<div class="productmaster-image-parent">';
                 echo '<label class="productmaster-image-parent-label">';
-                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
+                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
                 if (!empty($parent_image)) {
                     echo '<img src="' . esc_url($parent_image) . '" alt="' . esc_attr($parent_term->name) . '" class="productmaster-image-thumb" />';
                 } else {
@@ -1750,7 +1750,7 @@ class ProductMaster_Admin_Portal
                         $child_checked = in_array($child_slug, $selected_values, true) || in_array($parent_slug, $selected_values, true);
                         $child_image = $this->resolve_term_image_url($child_term, $presentation);
                         echo '<label class="productmaster-image-child-label">';
-                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';
+                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';
                         echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
                         if (!empty($child_image)) {
                             echo '<img src="' . esc_url($child_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';
@@ -1773,7 +1773,7 @@ class ProductMaster_Admin_Portal
                 $checked = in_array($term->slug, $selected_values, true);
                 $image = $this->resolve_term_image_url($term, $presentation);
                 echo '<label class="productmaster-image-parent-label">';
-                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
+                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
                 if (!empty($image)) {
                     echo '<img src="' . esc_url($image) . '" alt="' . esc_attr($term->name) . '" class="productmaster-image-thumb" />';
                 } else {

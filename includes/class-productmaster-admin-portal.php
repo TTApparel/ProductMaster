@@ -193,7 +193,6 @@ class ProductMaster_Admin_Portal
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
         }
 
-        if ('filters' === $active_tab) {
         echo '<section class="productmaster-card">';
         echo '<h2>' . esc_html__('Create New Filter', 'productmaster') . '</h2>';
         echo '<form method="post">';
@@ -255,11 +254,6 @@ class ProductMaster_Admin_Portal
 
         if (!empty($editing_filter)) {
             $this->render_filter_presentation_editor($editing_filter);
-        }
-        }
-
-        if ('product_loop' === $active_tab) {
-            $this->render_product_loop_builder_tab();
         }
         echo '</div>';
     }
@@ -2196,5 +2190,77 @@ class ProductMaster_Admin_Portal
         }
 
         return array_values(array_unique(array_filter($expanded_terms)));
+    }
+
+    private function render_product_loop_builder_tab()
+    {
+        $loops = $this->get_saved_product_loops();
+
+        echo '<section class="productmaster-card">';
+        echo '<h2>' . esc_html__('Create Product Loop', 'productmaster') . '</h2>';
+        echo '<form method="post">';
+        wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
+        echo '<input type="hidden" name="productmaster_action" value="add_product_loop" />';
+        echo '<table class="form-table" role="presentation"><tbody>';
+        echo '<tr><th scope="row"><label for="pm_loop_label">' . esc_html__('Loop Name', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_label" name="label" type="text" required /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="4" /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="12" /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" placeholder="[products]" /></td></tr>';
+        echo '</tbody></table>';
+        submit_button(__('Save Product Loop', 'productmaster'));
+        echo '</form>';
+        echo '</section>';
+
+        echo '<section class="productmaster-card">';
+        echo '<h2>' . esc_html__('Saved Product Loops', 'productmaster') . '</h2>';
+        if (empty($loops)) {
+            echo '<p>' . esc_html__('No product loops have been saved yet.', 'productmaster') . '</p>';
+        } else {
+            echo '<table class="widefat striped"><thead><tr><th>' . esc_html__('Name', 'productmaster') . '</th><th>' . esc_html__('Columns', 'productmaster') . '</th><th>' . esc_html__('Per Page', 'productmaster') . '</th><th>' . esc_html__('Shortcode', 'productmaster') . '</th><th>' . esc_html__('Action', 'productmaster') . '</th></tr></thead><tbody>';
+            foreach ($loops as $loop) {
+                $loop_id = !empty($loop['id']) ? $loop['id'] : sanitize_key(sanitize_title((string) ($loop['label'] ?? '')));
+                $shortcode = '[productmaster_loop id="' . $loop_id . '"]';
+                echo '<tr>';
+                echo '<td>' . esc_html($loop['label'] ?? '') . '</td>';
+                echo '<td>' . esc_html((string) ($loop['columns'] ?? 4)) . '</td>';
+                echo '<td>' . esc_html((string) ($loop['limit'] ?? 12)) . '</td>';
+                echo '<td><code>' . esc_html($shortcode) . '</code></td>';
+                echo '<td><form method="post">';
+                wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
+                echo '<input type="hidden" name="productmaster_action" value="delete_product_loop" />';
+                echo '<input type="hidden" name="loop_id" value="' . esc_attr($loop_id) . '" />';
+                submit_button(__('Delete', 'productmaster'), 'delete small', 'submit', false);
+                echo '</form></td></tr>';
+            }
+            echo '</tbody></table>';
+        }
+        echo '</section>';
+    }
+
+    private function get_saved_product_loops()
+    {
+        $loops = get_option(self::LOOP_OPTION_KEY, array());
+        if (!is_array($loops)) {
+            return array();
+        }
+
+        return array_values(array_filter($loops, function ($loop) {
+            return is_array($loop) && !empty($loop['label']);
+        }));
+    }
+
+    private function sanitize_product_loop_settings($data)
+    {
+        $label = isset($data['label']) ? sanitize_text_field(wp_unslash($data['label'])) : '';
+        $columns = isset($data['columns']) ? absint($data['columns']) : 4;
+        $limit = isset($data['limit']) ? absint($data['limit']) : 12;
+        $shortcode = isset($data['shortcode']) ? sanitize_text_field(wp_unslash($data['shortcode'])) : '';
+
+        return array(
+            'label' => $label,
+            'columns' => max(1, min(6, $columns)),
+            'limit' => max(1, min(60, $limit)),
+            'shortcode' => $shortcode,
+        );
     }
 }

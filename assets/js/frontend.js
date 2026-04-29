@@ -50,10 +50,10 @@
         }
 
         window.setTimeout(function () {
+            normalizeCheckboxArrayParamsForSubmit(form);
             toggledInputs.forEach(function (input) {
                 input.disabled = false;
             });
-            normalizeCheckboxArrayParamsForSubmit(form);
         }, 0);
     }
 

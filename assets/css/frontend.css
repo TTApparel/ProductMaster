@@ -176,8 +176,8 @@
     z-index: 2;
 }
 
-.productmaster-image-child-label:hover .productmaster-image-child-tag,
-.productmaster-image-child-label:focus-within .productmaster-image-child-tag {
+.productmaster-image-child-label:hover > .productmaster-image-child-tag,
+.productmaster-image-child-label:focus-within > .productmaster-image-child-tag {
     opacity: 1;
     visibility: visible;
 }

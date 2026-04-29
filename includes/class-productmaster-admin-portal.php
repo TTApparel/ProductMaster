@@ -647,10 +647,15 @@ class ProductMaster_Admin_Portal
             }
 
             if (is_array($value)) {
-                foreach ($value as $item) {
-                    $clean_item = sanitize_text_field(wp_unslash($item));
-                    echo '<input type="hidden" name="' . esc_attr($key) . '[]" value="' . esc_attr($clean_item) . '" />';
-                }
+                $clean_values = array_values(
+                    array_filter(
+                        array_map(
+                            'sanitize_text_field',
+                            wp_unslash($value)
+                        )
+                    )
+                );
+                echo '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr(implode(',', $clean_values)) . '" />';
                 continue;
             }
 

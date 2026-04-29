@@ -2341,8 +2341,15 @@ class ProductMaster_Admin_Portal
 
             $source_presentation = isset($source_filter['presentation']) && is_array($source_filter['presentation']) ? $source_filter['presentation'] : $this->get_default_presentation_settings();
             $terms_by_slug = array();
+            $children_by_parent_slug = array();
             foreach ($terms as $term) {
                 $terms_by_slug[$term->slug] = $term;
+                if (!empty($term->parent)) {
+                    $parent_term = get_term((int) $term->parent, $source_filter['taxonomy']);
+                    if ($parent_term && !is_wp_error($parent_term) && !empty($parent_term->slug)) {
+                        $children_by_parent_slug[$parent_term->slug][] = $term->slug;
+                    }
+                }
             }
 
             $parent_only_terms = array();
@@ -2384,6 +2391,9 @@ class ProductMaster_Admin_Portal
                 $checked = isset($selected_lookup[$value]);
                 $term_image = $this->resolve_term_image_url($term, $source_presentation);
                 $child_slugs = isset($manual_hierarchy[$term->slug]) && is_array($manual_hierarchy[$term->slug]) ? $manual_hierarchy[$term->slug] : array();
+                if (empty($child_slugs) && !empty($children_by_parent_slug[$term->slug])) {
+                    $child_slugs = $children_by_parent_slug[$term->slug];
+                }
                 echo '<div class="productmaster-multi-parent-item">';
                 echo '<label class="productmaster-image-child-label">';
                 echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($value) . '" ' . checked($checked, true, false) . ' />';

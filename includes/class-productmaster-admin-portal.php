@@ -1120,7 +1120,9 @@ class ProductMaster_Admin_Portal
                 continue;
             }
 
-            if (!empty($tracked_filter['taxonomy'])) {
+            if (isset($tracked_filter['type']) && 'multi_filter' === $tracked_filter['type']) {
+                $selected_values = $this->translate_multi_filter_values($selected_values);
+            } elseif (!empty($tracked_filter['taxonomy'])) {
                 $selected_values = $this->translate_term_slugs_for_filter($tracked_filter, $selected_values);
             } else {
                 $selected_values = array_map('sanitize_text_field', $selected_values);
@@ -1253,6 +1255,42 @@ class ProductMaster_Admin_Portal
         }
 
         return array_values(array_filter(array_map('sanitize_text_field', explode(',', $raw_value))));
+    }
+
+    private function translate_multi_filter_values($selected_values)
+    {
+        $translated = array();
+        $filters_by_id = array();
+        foreach ($this->get_saved_taxonomy_filters() as $saved_filter) {
+            if (!empty($saved_filter['id'])) {
+                $filters_by_id[$saved_filter['id']] = $saved_filter;
+            }
+        }
+
+        foreach ((array) $selected_values as $selected_value) {
+            $selected_value = sanitize_text_field((string) $selected_value);
+            if (false === strpos($selected_value, ':')) {
+                $translated[] = $selected_value;
+                continue;
+            }
+
+            list($source_id, $term_slug) = explode(':', $selected_value, 2);
+            $source_id = sanitize_key($source_id);
+            $term_slug = sanitize_title($term_slug);
+            if (empty($filters_by_id[$source_id]['taxonomy'])) {
+                $translated[] = $term_slug;
+                continue;
+            }
+
+            $term = get_term_by('slug', $term_slug, $filters_by_id[$source_id]['taxonomy']);
+            if ($term && !is_wp_error($term) && !empty($term->name)) {
+                $translated[] = $term->name;
+            } else {
+                $translated[] = $term_slug;
+            }
+        }
+
+        return $translated;
     }
 
     private function get_filter_types_without_taxonomy()

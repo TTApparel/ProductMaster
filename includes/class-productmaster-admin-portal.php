@@ -1696,10 +1696,9 @@ class ProductMaster_Admin_Portal
         $slug = (string) $term->slug;
         if (!empty($presentation['term_images'][$slug])) {
             $term_image_url = (string) $presentation['term_images'][$slug];
-            if ($this->is_local_media_file_missing($term_image_url)) {
-                return '';
+            if (!$this->is_local_media_file_missing($term_image_url)) {
+                return esc_url($term_image_url);
             }
-            return esc_url($term_image_url);
         }
 
         $swatch_image = get_term_meta((int) $term->term_id, 'smart-swatches-framework--src', true);

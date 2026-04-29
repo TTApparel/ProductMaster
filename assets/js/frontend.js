@@ -45,8 +45,54 @@
         });
 
         if (!toggledInputs.length) {
+            normalizeCheckboxArrayParamsForSubmit(form);
             return;
         }
+
+        window.setTimeout(function () {
+            toggledInputs.forEach(function (input) {
+                input.disabled = false;
+            });
+            normalizeCheckboxArrayParamsForSubmit(form);
+        }, 0);
+    }
+
+    function normalizeCheckboxArrayParamsForSubmit(form) {
+        var groupedValues = {};
+        var toggledInputs = [];
+        var existingNormalizedInputs = form.querySelectorAll('.productmaster-normalized-array-param');
+        existingNormalizedInputs.forEach(function (input) {
+            input.parentNode.removeChild(input);
+        });
+
+        var arrayInputs = form.querySelectorAll('input[name$="[]"]');
+        arrayInputs.forEach(function (input) {
+            if (input.disabled || !input.checked) {
+                return;
+            }
+
+            var originalName = input.name;
+            if (!groupedValues[originalName]) {
+                groupedValues[originalName] = [];
+            }
+            groupedValues[originalName].push(input.value);
+        });
+
+        Object.keys(groupedValues).forEach(function (arrayName) {
+            var normalizedName = arrayName.slice(0, -2);
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = normalizedName;
+            hidden.value = groupedValues[arrayName].join(',');
+            hidden.className = 'productmaster-normalized-array-param';
+            form.appendChild(hidden);
+
+            var inputsToDisable = form.querySelectorAll('input[name="' + arrayName.replace(/"/g, '\\"') + '"]');
+            inputsToDisable.forEach(function (input) {
+                input.disabled = true;
+                toggledInputs.push(input);
+            });
+        });
 
         window.setTimeout(function () {
             toggledInputs.forEach(function (input) {

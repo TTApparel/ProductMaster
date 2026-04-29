@@ -682,14 +682,15 @@ class ProductMaster_Admin_Portal
         foreach ($filters as $filter) {
             $param_key = 'pmf_' . $filter['id'];
             $raw_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $raw_values = $this->normalize_filter_values($raw_value);
             $allowed_terms = isset($filter['presentation']['allowed_terms']) ? (array) $filter['presentation']['allowed_terms'] : array();
             $manual_hierarchy_terms = $this->get_manual_hierarchy_allowed_terms($filter);
             if (!empty($manual_hierarchy_terms)) {
                 $allowed_terms = $manual_hierarchy_terms;
             }
 
-            if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && is_array($raw_value) && !empty($raw_value)) {
-                $terms = array_map('sanitize_title', $raw_value);
+            if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && !empty($raw_values)) {
+                $terms = array_map('sanitize_title', $raw_values);
                 $terms = $this->expand_terms_by_manual_hierarchy($terms, $filter);
                 if (!empty($allowed_terms)) {
                     $terms = array_values(array_intersect($terms, $allowed_terms));
@@ -923,6 +924,7 @@ class ProductMaster_Admin_Portal
     {
         $param_key = 'pmf_' . $filter['id'];
         $selected_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $selected_values = $this->normalize_filter_values($selected_value);
         $terms = get_terms(
             array(
                 'taxonomy' => $filter['taxonomy'],
@@ -943,19 +945,19 @@ class ProductMaster_Admin_Portal
 
         if ('checkboxes' === $filter['type']) {
             if ('enabled' === $presentation['hierarchical_visual'] && is_taxonomy_hierarchical($filter['taxonomy'])) {
-                $this->render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation);
+                $this->render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_values, $presentation);
             } else {
                 foreach ($terms as $term) {
                     if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
                         continue;
                     }
-                    $checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
+                    $checked = in_array($term->slug, $selected_values, true);
                     $class = 'image_boxes' === $filter['type'] ? 'productmaster-image-box' : '';
                     echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
                 }
             }
         } elseif ('image_boxes' === $filter['type']) {
-            $this->render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation);
+            $this->render_image_box_filter($filter, $terms, $param_key, $selected_values, $presentation);
         } elseif ('drop_down_selectors' === $filter['type']) {
             $extra_class = 'enabled' === $presentation['hierarchical_visual'] ? 'productmaster-hierarchical-enabled' : '';
             $manual_hierarchy = isset($presentation['hierarchy_map']) ? (array) $presentation['hierarchy_map'] : array();
@@ -1134,6 +1136,24 @@ class ProductMaster_Admin_Portal
         }
 
         return $term_names;
+    }
+
+    private function normalize_filter_values($raw_value)
+    {
+        if (is_array($raw_value)) {
+            return array_values(array_filter(array_map('sanitize_title', $raw_value)));
+        }
+
+        if (!is_string($raw_value) || '' === trim($raw_value)) {
+            return array();
+        }
+
+        if (false !== strpos($raw_value, ',')) {
+            $parts = explode(',', $raw_value);
+            return array_values(array_filter(array_map('sanitize_title', $parts)));
+        }
+
+        return array(sanitize_title($raw_value));
     }
 
     private function get_filter_types_without_taxonomy()
@@ -1685,7 +1705,7 @@ class ProductMaster_Admin_Portal
 
     private function render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation)
     {
-        $selected_values = is_array($selected_value) ? $selected_value : array();
+        $selected_values = $this->normalize_filter_values($selected_value);
         $term_by_slug = array();
         foreach ($terms as $term) {
             $term_by_slug[$term->slug] = $term;

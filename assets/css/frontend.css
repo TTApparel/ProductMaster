@@ -206,3 +206,15 @@
 .productmaster-active-filter-label {
     font-weight: 600;
 }
+
+.productmaster-product-loop-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--pm-loop-columns, 4), minmax(0, 1fr));
+    gap: 20px;
+}
+
+.productmaster-loop-card {
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    padding: 14px;
+}

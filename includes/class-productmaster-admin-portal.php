@@ -1285,10 +1285,16 @@ class ProductMaster_Admin_Portal
             } else {
                 foreach ($trackable_filters as $trackable_filter) {
                     $is_selected = in_array($trackable_filter['id'], (array) $presentation['selected_filter_ids'], true);
+                    $source_filter_image = isset($presentation['source_filter_images'][$trackable_filter['id']]) ? (string) $presentation['source_filter_images'][$trackable_filter['id']] : '';
                     echo '<label class="productmaster-term-toggle">';
                     echo '<input type="checkbox" name="selected_filter_ids[]" value="' . esc_attr($trackable_filter['id']) . '" ' . checked($is_selected, true, false) . ' />';
                     echo '<span>' . esc_html($trackable_filter['label']) . '</span>';
                     echo '</label>';
+                    echo '<div class="productmaster-term-image-control">';
+                    echo '<input type="hidden" class="productmaster-term-image-input" name="source_filter_images[' . esc_attr($trackable_filter['id']) . ']" value="' . esc_attr($source_filter_image) . '" />';
+                    echo '<button type="button" class="button button-small productmaster-select-image">' . esc_html__('Choose image', 'productmaster') . '</button>';
+                    echo '<span class="productmaster-image-selected-label">' . esc_html(!empty($source_filter_image) ? __('Image selected', 'productmaster') : __('No image', 'productmaster')) . '</span>';
+                    echo '</div>';
                 }
             }
             echo '</div><p class="description">' . esc_html__('Choose which labeled filters this block will track and display for the current view. Leave all unchecked to include all eligible filters.', 'productmaster') . '</p></td></tr>';
@@ -1410,6 +1416,7 @@ class ProductMaster_Admin_Portal
             'child_image_box_height' => isset($data['child_image_box_height']) ? max(16, min(240, absint($data['child_image_box_height']))) : $defaults['child_image_box_height'],
             'allowed_terms' => $allowed_terms,
             'selected_filter_ids' => isset($data['selected_filter_ids']) && is_array($data['selected_filter_ids']) ? array_values(array_unique(array_map('sanitize_key', wp_unslash($data['selected_filter_ids'])))) : $defaults['selected_filter_ids'],
+            'source_filter_images' => isset($data['source_filter_images']) && is_array($data['source_filter_images']) ? $this->sanitize_source_filter_images(wp_unslash($data['source_filter_images'])) : $defaults['source_filter_images'],
             'term_images' => isset($data['term_images']) && is_array($data['term_images']) ? $this->sanitize_term_images(wp_unslash($data['term_images'])) : $defaults['term_images'],
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
         );
@@ -1435,6 +1442,7 @@ class ProductMaster_Admin_Portal
             'child_image_box_height' => 40,
             'allowed_terms' => array(),
             'selected_filter_ids' => array(),
+            'source_filter_images' => array(),
             'term_images' => array(),
             'custom_css' => '',
         );
@@ -1756,6 +1764,21 @@ class ProductMaster_Admin_Portal
         return $clean;
     }
 
+    private function sanitize_source_filter_images($source_filter_images)
+    {
+        $clean = array();
+        foreach ((array) $source_filter_images as $filter_id => $url) {
+            $clean_filter_id = sanitize_key((string) $filter_id);
+            $clean_url = esc_url_raw((string) $url);
+            if ('' === $clean_filter_id) {
+                continue;
+            }
+            $clean[$clean_filter_id] = $clean_url;
+        }
+
+        return $clean;
+    }
+
     private function resolve_term_image_url($term, $presentation)
     {
         if (!is_object($term) || empty($term->slug)) {
@@ -1992,7 +2015,12 @@ class ProductMaster_Admin_Portal
 
             echo '<div class="productmaster-image-parent">';
             echo '<label class="productmaster-image-parent-label">';
-            echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr((string) $source_filter['label'], 0, 1)) . '</span>';
+            $source_filter_image = isset($filter['presentation']['source_filter_images'][$source_filter['id']]) ? esc_url((string) $filter['presentation']['source_filter_images'][$source_filter['id']]) : '';
+            if (!empty($source_filter_image)) {
+                echo '<img src="' . esc_url($source_filter_image) . '" alt="' . esc_attr($source_filter['label']) . '" class="productmaster-image-thumb" />';
+            } else {
+                echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr((string) $source_filter['label'], 0, 1)) . '</span>';
+            }
             echo '<span class="productmaster-image-child-tag">' . esc_html($source_filter['label']) . '</span>';
             echo '</label>';
 

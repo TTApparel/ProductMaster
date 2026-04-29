@@ -62,6 +62,7 @@ Implemented:
 - 2026-04-29: Product Loop card content padding was removed from frontend cards and brand/category labels were simplified to values only (no “Brand:” / “Categories:” prefixes).
 - 2026-04-29: Product Loop builder now includes per-element typography controls (bold, italic, font size) applied to each card element in preview and frontend output.
 - 2026-04-29: Product Loop now includes a Color Variations card element that displays variation color images in a horizontal slider; hovering a swatch swaps the main product image to that variation image.
+- 2026-04-29: Product Loop image rendering now uses WooCommerce-native product image HTML fallback and loop settings are normalized against defaults to prevent missing legacy keys from hiding image/color elements.
 
 ## Requirements
 

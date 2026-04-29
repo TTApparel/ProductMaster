@@ -2506,11 +2506,7 @@ class ProductMaster_Admin_Portal
     private function get_saved_product_loop()
     {
         $loop = get_option(self::LOOP_OPTION_KEY, array());
-        $defaults = $this->get_default_product_loop_settings();
-        if (!is_array($loop)) {
-            return $defaults;
-        }
-        return array_merge($defaults, $loop);
+        return $this->normalize_product_loop_settings($loop);
     }
 
     private function sanitize_product_loop_settings($data)
@@ -2565,7 +2561,7 @@ class ProductMaster_Admin_Portal
             'columns' => 4,
             'limit' => 12,
             'shortcode' => '[productmaster_product_loop]',
-            'visible_fields' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
+            'visible_fields' => array('image', 'title', 'price', 'description', 'color_variations', 'button', 'brand', 'categories'),
             'field_order' => array('image', 'title', 'price', 'description', 'color_variations', 'button', 'brand', 'categories'),
             'field_tags' => array(
                 'image' => 'div',
@@ -2642,11 +2638,18 @@ class ProductMaster_Admin_Portal
                 $tag = 'div';
             }
             if ('image' === $field) {
-                $main_image_url = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
-                if (empty($main_image_url)) {
-                    $main_image_url = wc_placeholder_img_src('woocommerce_thumbnail');
+                $image_html = $product->get_image(
+                    'woocommerce_thumbnail',
+                    array(
+                        'class' => 'productmaster-loop-main-image',
+                        'alt' => $product->get_name(),
+                    )
+                );
+                if (empty($image_html)) {
+                    $placeholder = wc_placeholder_img('woocommerce_thumbnail', array('class' => 'productmaster-loop-main-image'));
+                    $image_html = !empty($placeholder) ? $placeholder : '';
                 }
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '"><img class="productmaster-loop-main-image" src="' . esc_url($main_image_url) . '" alt="' . esc_attr($product->get_name()) . '" /></a></' . esc_attr($tag) . '>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $image_html . '</a></' . esc_attr($tag) . '>';
             } elseif ('title' === $field) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-title" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></' . esc_attr($tag) . '>';
             } elseif ('price' === $field) {
@@ -2685,18 +2688,27 @@ class ProductMaster_Admin_Portal
             if (empty($image_url)) {
                 continue;
             }
-            $attributes = isset($variation['attributes']) && is_array($variation['attributes']) ? $variation['attributes'] : array();
-            $has_color_attr = false;
-            foreach (array_keys($attributes) as $attr_key) {
-                if (false !== strpos((string) $attr_key, 'color')) {
-                    $has_color_attr = true;
-                    break;
-                }
-            }
-            if ($has_color_attr) {
-                $images[] = $image_url;
-            }
+            $images[] = $image_url;
         }
         return array_values(array_unique($images));
+    }
+
+    private function normalize_product_loop_settings($loop)
+    {
+        $defaults = $this->get_default_product_loop_settings();
+        if (!is_array($loop)) {
+            return $defaults;
+        }
+
+        $normalized = array_merge($defaults, $loop);
+        $normalized['visible_fields'] = array_values(array_unique(array_merge($defaults['visible_fields'], isset($loop['visible_fields']) && is_array($loop['visible_fields']) ? $loop['visible_fields'] : array())));
+        $normalized['field_order'] = array_values(array_unique(array_merge(isset($loop['field_order']) && is_array($loop['field_order']) ? $loop['field_order'] : array(), $defaults['field_order'])));
+        $normalized['field_tags'] = array_merge($defaults['field_tags'], isset($loop['field_tags']) && is_array($loop['field_tags']) ? $loop['field_tags'] : array());
+        $normalized['field_styles'] = array_merge($defaults['field_styles'], isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array());
+        foreach ($defaults['field_styles'] as $field_key => $style_defaults) {
+            $normalized['field_styles'][$field_key] = array_merge($style_defaults, isset($normalized['field_styles'][$field_key]) && is_array($normalized['field_styles'][$field_key]) ? $normalized['field_styles'][$field_key] : array());
+        }
+
+        return $normalized;
     }
 }

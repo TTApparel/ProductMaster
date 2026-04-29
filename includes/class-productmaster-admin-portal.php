@@ -1695,15 +1695,43 @@ class ProductMaster_Admin_Portal
 
         $slug = (string) $term->slug;
         if (!empty($presentation['term_images'][$slug])) {
-            return esc_url((string) $presentation['term_images'][$slug]);
+            $term_image_url = (string) $presentation['term_images'][$slug];
+            if ($this->is_local_media_file_missing($term_image_url)) {
+                return '';
+            }
+            return esc_url($term_image_url);
         }
 
         $swatch_image = get_term_meta((int) $term->term_id, 'smart-swatches-framework--src', true);
         if (is_string($swatch_image) && '' !== $swatch_image) {
+            if ($this->is_local_media_file_missing($swatch_image)) {
+                return '';
+            }
             return esc_url($swatch_image);
         }
 
         return '';
+    }
+
+    private function is_local_media_file_missing($url)
+    {
+        $url = trim((string) $url);
+        if ('' === $url) {
+            return true;
+        }
+
+        $parsed = wp_parse_url($url);
+        if (empty($parsed['host']) || empty($parsed['path'])) {
+            return false;
+        }
+
+        $site_url = wp_parse_url(home_url());
+        if (empty($site_url['host']) || $parsed['host'] !== $site_url['host']) {
+            return false;
+        }
+
+        $absolute_path = ABSPATH . ltrim($parsed['path'], '/');
+        return !file_exists($absolute_path);
     }
 
     private function render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation)

@@ -2710,9 +2710,21 @@ class ProductMaster_Admin_Portal
             return $defaults;
         }
 
+        $allowed_fields = array_keys($defaults['field_tags']);
         $normalized = array_merge($defaults, $loop);
-        $normalized['visible_fields'] = array_values(array_unique(array_merge($defaults['visible_fields'], isset($loop['visible_fields']) && is_array($loop['visible_fields']) ? $loop['visible_fields'] : array())));
-        $normalized['field_order'] = array_values(array_unique(array_merge(isset($loop['field_order']) && is_array($loop['field_order']) ? $loop['field_order'] : array(), $defaults['field_order'])));
+
+        if (array_key_exists('visible_fields', $loop) && is_array($loop['visible_fields'])) {
+            $normalized['visible_fields'] = array_values(
+                array_intersect($allowed_fields, array_map('sanitize_key', $loop['visible_fields']))
+            );
+        } else {
+            $normalized['visible_fields'] = $defaults['visible_fields'];
+        }
+
+        $saved_order = isset($loop['field_order']) && is_array($loop['field_order'])
+            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['field_order'])))
+            : array();
+        $normalized['field_order'] = array_values(array_unique(array_merge($saved_order, $defaults['field_order'])));
         $normalized['field_tags'] = array_merge($defaults['field_tags'], isset($loop['field_tags']) && is_array($loop['field_tags']) ? $loop['field_tags'] : array());
         $normalized['field_styles'] = array_merge($defaults['field_styles'], isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array());
         foreach ($defaults['field_styles'] as $field_key => $style_defaults) {

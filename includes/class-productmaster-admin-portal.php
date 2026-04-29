@@ -98,7 +98,7 @@ class ProductMaster_Admin_Portal
         wp_enqueue_script(
             'productmaster-admin',
             PRODUCTMASTER_URL . 'assets/js/admin.js',
-            array('jquery'),
+            array('jquery', 'jquery-ui-sortable'),
             PRODUCTMASTER_VERSION,
             true
         );
@@ -2477,12 +2477,12 @@ class ProductMaster_Admin_Portal
         echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" value="' . esc_attr($loop['shortcode']) . '" /><p class="description">' . esc_html__('Use this shortcode where the loop should render. Default: [productmaster_product_loop]', 'productmaster') . '</p></td></tr>';
         echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="' . esc_attr((string) $loop['columns']) . '" /></td></tr>';
         echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="' . esc_attr((string) $loop['limit']) . '" /></td></tr>';
-        echo '<tr><th scope="row">' . esc_html__('Card elements', 'productmaster') . '</th><td><fieldset class="productmaster-loop-fields"><p class="description">' . esc_html__('Drag elements up or down to set display order.', 'productmaster') . '</p><div class="productmaster-loop-sortable">';
+        echo '<tr><td colspan="2"><fieldset class="productmaster-loop-fields"><h3>' . esc_html__('Card elements', 'productmaster') . '</h3><p class="description">' . esc_html__('Drag elements up or down to set display order.', 'productmaster') . '</p><div class="productmaster-loop-sortable">';
         foreach ($ordered_layout_fields as $key => $label) {
             $visible = in_array($key, $loop['visible_fields'], true);
             $current_tag = isset($loop['field_tags'][$key]) ? $loop['field_tags'][$key] : 'div';
             $current_style = isset($field_styles[$key]) && is_array($field_styles[$key]) ? $field_styles[$key] : array('bold' => 0, 'italic' => 0, 'font_size' => 16);
-            echo '<div class="productmaster-loop-sortable-item" draggable="true" data-field-key="' . esc_attr($key) . '">';
+            echo '<div class="productmaster-loop-sortable-item" data-field-key="' . esc_attr($key) . '">';
             echo '<input type="hidden" name="field_order[]" value="' . esc_attr($key) . '" />';
             echo '<p><span class="productmaster-drag-handle" aria-hidden="true">↕</span> <label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
             echo '<label>' . esc_html__('HTML tag', 'productmaster') . ' <select name="field_tags[' . esc_attr($key) . ']">';

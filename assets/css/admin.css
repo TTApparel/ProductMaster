@@ -64,6 +64,13 @@
     opacity: 0.6;
 }
 
+.productmaster-loop-sortable-placeholder {
+    border: 2px dashed #8c8f94;
+    border-radius: 6px;
+    min-height: 44px;
+    background: #fff;
+}
+
 .productmaster-drag-handle {
     cursor: move;
     font-weight: 700;

@@ -64,6 +64,7 @@ Implemented:
 - 2026-04-29: Product Loop now includes a Color Variations card element that displays variation color images in a horizontal slider; hovering a swatch swaps the main product image to that variation image.
 - 2026-04-29: Product Loop image rendering now uses WooCommerce-native product image HTML fallback and loop settings are normalized against defaults to prevent missing legacy keys from hiding image/color elements.
 - 2026-04-29: Product Loop element ordering is now drag-and-drop in the admin builder (instead of numeric order inputs) for faster visual reordering.
+- 2026-04-29: Product Loop element ordering now uses jQuery UI sortable with a drag handle for reliable reordering, and the “Card elements” heading is shown above the sortable list.
 
 ## Requirements
 

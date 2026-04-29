@@ -116,30 +116,21 @@
             });
         });
 
-        var draggedItem = null;
-        $(document).on('dragstart', '.productmaster-loop-sortable-item', function (event) {
-            draggedItem = this;
-            this.classList.add('is-dragging');
-            event.originalEvent.dataTransfer.effectAllowed = 'move';
-        });
-
-        $(document).on('dragend', '.productmaster-loop-sortable-item', function () {
-            this.classList.remove('is-dragging');
-            draggedItem = null;
-        });
-
-        $(document).on('dragover', '.productmaster-loop-sortable-item', function (event) {
-            event.preventDefault();
-            if (!draggedItem || draggedItem === this) {
-                return;
-            }
-            var rect = this.getBoundingClientRect();
-            var shouldInsertBefore = (event.originalEvent.clientY - rect.top) < (rect.height / 2);
-            if (shouldInsertBefore) {
-                this.parentNode.insertBefore(draggedItem, this);
-            } else {
-                this.parentNode.insertBefore(draggedItem, this.nextSibling);
-            }
+        $('.productmaster-loop-sortable').each(function () {
+            $(this).sortable({
+                axis: 'y',
+                containment: 'parent',
+                handle: '.productmaster-drag-handle',
+                items: '.productmaster-loop-sortable-item',
+                placeholder: 'productmaster-loop-sortable-placeholder',
+                forcePlaceholderSize: true,
+                start: function (event, ui) {
+                    ui.item.addClass('is-dragging');
+                },
+                stop: function (event, ui) {
+                    ui.item.removeClass('is-dragging');
+                }
+            });
         });
     });
 })(jQuery);

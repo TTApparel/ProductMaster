@@ -227,6 +227,14 @@
                 }
 
                 if (!target.checked && currentMenu) {
+                    var parentValueLabel = currentMenu.closest('.productmaster-image-child-label');
+                    if (parentValueLabel) {
+                        var parentValueCheckbox = parentValueLabel.querySelector(':scope > .productmaster-image-child-checkbox');
+                        if (parentValueCheckbox) {
+                            parentValueCheckbox.checked = false;
+                        }
+                    }
+
                     var currentParent = currentMenu.closest('.productmaster-image-parent');
                     if (currentParent) {
                         var currentParentCheckbox = currentParent.querySelector('.productmaster-image-parent-checkbox');

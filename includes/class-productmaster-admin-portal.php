@@ -1957,19 +1957,40 @@ class ProductMaster_Admin_Portal
             return;
         }
 
+        echo '<div class="productmaster-image-box-grid">';
         foreach ($source_filters as $source_filter) {
             $terms = get_terms(array('taxonomy' => $source_filter['taxonomy'], 'hide_empty' => false));
             if (is_wp_error($terms) || empty($terms)) {
                 continue;
             }
-            echo '<details class="productmaster-hierarchical-children"><summary class="productmaster-hierarchical-summary">' . esc_html($source_filter['label']) . '</summary><div class="productmaster-hierarchical-nested">';
+
+            $source_presentation = isset($source_filter['presentation']) && is_array($source_filter['presentation']) ? $source_filter['presentation'] : $this->get_default_presentation_settings();
+            echo '<div class="productmaster-image-parent">';
+            echo '<label class="productmaster-image-parent-label">';
+            echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr((string) $source_filter['label'], 0, 1)) . '</span>';
+            echo '<span class="productmaster-image-child-tag">' . esc_html($source_filter['label']) . '</span>';
+            echo '</label>';
+
+            echo '<div class="productmaster-image-children-menu">';
+            echo '<div class="productmaster-image-children-header">' . esc_html($source_filter['label']) . '</div>';
+            echo '<div class="productmaster-image-children-grid">';
             foreach ($terms as $term) {
                 $value = $source_filter['id'] . ':' . $term->slug;
                 $checked = isset($selected_lookup[$value]);
-                echo '<label><input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($value) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+                $term_image = $this->resolve_term_image_url($term, $source_presentation);
+                echo '<label class="productmaster-image-child-label">';
+                echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($value) . '" ' . checked($checked, true, false) . ' />';
+                echo '<span class="productmaster-image-child-tag">' . esc_html($term->name) . '</span>';
+                if (!empty($term_image)) {
+                    echo '<img src="' . esc_url($term_image) . '" alt="' . esc_attr($term->name) . '" class="productmaster-image-thumb" />';
+                } else {
+                    echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($term->name, 0, 1)) . '</span>';
+                }
+                echo '</label>';
             }
-            echo '</div></details>';
+            echo '</div></div></div>';
         }
+        echo '</div>';
     }
 
     private function expand_terms_by_manual_hierarchy($terms, $filter)

@@ -153,6 +153,11 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.productmaster-multi-second-level .productmaster-image-thumb {
+    width: var(--pm-multi-child-box-width, 40px);
+    height: var(--pm-multi-child-box-height, 32px);
+}
+
 .productmaster-image-child-checkbox:checked ~ .productmaster-image-thumb {
     border: 2px solid #2271b1;
     box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.15);

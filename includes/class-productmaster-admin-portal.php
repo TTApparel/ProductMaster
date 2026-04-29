@@ -1311,8 +1311,13 @@ class ProductMaster_Admin_Portal
             }
             echo '</p></td></tr>';
             echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
-            echo '<tr><th>' . esc_html__('Image box size (px)', 'productmaster') . '</th><td><label for="pm_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /> <label for="pm_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
-            echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_child_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_child_image_box_width" name="child_image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_width']) . '" /> <label for="pm_child_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_child_image_box_height" name="child_image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_height']) . '" /></td></tr>';
+            if (isset($filter['type']) && 'multi_filter' === $filter['type']) {
+                echo '<tr><th>' . esc_html__('Parent image size (px)', 'productmaster') . '</th><td><label for="pm_multi_parent_image_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_multi_parent_image_width" name="multi_parent_image_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_parent_image_width']) . '" /> <label for="pm_multi_parent_image_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_multi_parent_image_height" name="multi_parent_image_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_parent_image_height']) . '" /></td></tr>';
+                echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_multi_child_image_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_multi_child_image_width" name="multi_child_image_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_child_image_width']) . '" /> <label for="pm_multi_child_image_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_multi_child_image_height" name="multi_child_image_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_child_image_height']) . '" /></td></tr>';
+            } else {
+                echo '<tr><th>' . esc_html__('Image box size (px)', 'productmaster') . '</th><td><label for="pm_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /> <label for="pm_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
+                echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_child_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_child_image_box_width" name="child_image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_width']) . '" /> <label for="pm_child_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_child_image_box_height" name="child_image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_height']) . '" /></td></tr>';
+            }
             echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
             usort(
                 $taxonomy_terms,
@@ -1414,6 +1419,10 @@ class ProductMaster_Admin_Portal
             'image_box_height' => isset($data['image_box_height']) ? max(16, min(240, absint($data['image_box_height']))) : $defaults['image_box_height'],
             'child_image_box_width' => isset($data['child_image_box_width']) ? max(16, min(240, absint($data['child_image_box_width']))) : $defaults['child_image_box_width'],
             'child_image_box_height' => isset($data['child_image_box_height']) ? max(16, min(240, absint($data['child_image_box_height']))) : $defaults['child_image_box_height'],
+            'multi_parent_image_width' => isset($data['multi_parent_image_width']) ? max(16, min(240, absint($data['multi_parent_image_width']))) : $defaults['multi_parent_image_width'],
+            'multi_parent_image_height' => isset($data['multi_parent_image_height']) ? max(16, min(240, absint($data['multi_parent_image_height']))) : $defaults['multi_parent_image_height'],
+            'multi_child_image_width' => isset($data['multi_child_image_width']) ? max(16, min(240, absint($data['multi_child_image_width']))) : $defaults['multi_child_image_width'],
+            'multi_child_image_height' => isset($data['multi_child_image_height']) ? max(16, min(240, absint($data['multi_child_image_height']))) : $defaults['multi_child_image_height'],
             'allowed_terms' => $allowed_terms,
             'selected_filter_ids' => isset($data['selected_filter_ids']) && is_array($data['selected_filter_ids']) ? array_values(array_unique(array_map('sanitize_key', wp_unslash($data['selected_filter_ids'])))) : $defaults['selected_filter_ids'],
             'source_filter_images' => isset($data['source_filter_images']) && is_array($data['source_filter_images']) ? $this->sanitize_source_filter_images(wp_unslash($data['source_filter_images'])) : $defaults['source_filter_images'],
@@ -1440,6 +1449,10 @@ class ProductMaster_Admin_Portal
             'image_box_height' => 40,
             'child_image_box_width' => 54,
             'child_image_box_height' => 40,
+            'multi_parent_image_width' => 54,
+            'multi_parent_image_height' => 40,
+            'multi_child_image_width' => 40,
+            'multi_child_image_height' => 32,
             'allowed_terms' => array(),
             'selected_filter_ids' => array(),
             'source_filter_images' => array(),
@@ -1980,7 +1993,8 @@ class ProductMaster_Admin_Portal
             return;
         }
 
-        echo '<div class="productmaster-image-box-grid">';
+        $multi_styles = '--pm-image-child-box-width:' . (int) $filter['presentation']['multi_parent_image_width'] . 'px;--pm-image-child-box-height:' . (int) $filter['presentation']['multi_parent_image_height'] . 'px;--pm-multi-child-box-width:' . (int) $filter['presentation']['multi_child_image_width'] . 'px;--pm-multi-child-box-height:' . (int) $filter['presentation']['multi_child_image_height'] . 'px;';
+        echo '<div class="productmaster-image-box-grid" style="' . esc_attr($multi_styles) . '">';
         foreach ($source_filters as $source_filter) {
             $terms = get_terms(array('taxonomy' => $source_filter['taxonomy'], 'hide_empty' => false));
             if (is_wp_error($terms) || empty($terms)) {
@@ -2052,7 +2066,7 @@ class ProductMaster_Admin_Portal
                         $child_value = $source_filter['id'] . ':' . $child_term->slug;
                         $child_checked = isset($selected_lookup[$child_value]);
                         $child_term_image = $this->resolve_term_image_url($child_term, $source_presentation);
-                        echo '<label class="productmaster-image-child-label">';
+                        echo '<label class="productmaster-image-child-label productmaster-multi-second-level">';
                         echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($child_value) . '" ' . checked($child_checked, true, false) . ' />';
                         echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
                         if (!empty($child_term_image)) {

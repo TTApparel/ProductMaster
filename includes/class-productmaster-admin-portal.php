@@ -13,7 +13,7 @@ class ProductMaster_Admin_Portal
     const PRODUCT_LOOP_SLUG = 'productmaster-product-loop';
     const PER_PAGE = 20;
     const FILTER_OPTION_KEY = 'productmaster_taxonomy_filters';
-    const LOOP_OPTION_KEY = 'productmaster_product_loops';
+    const LOOP_OPTION_KEY = 'productmaster_product_loop';
 
     public function register_menu()
     {
@@ -307,12 +307,57 @@ class ProductMaster_Admin_Portal
 
         echo '<div class="wrap productmaster-wrap">';
         echo '<h1>' . esc_html__('Product Loop', 'productmaster') . '</h1>';
-        echo '<p>' . esc_html__('Create reusable product loop layouts and place them with a shortcode.', 'productmaster') . '</p>';
+        echo '<p>' . esc_html__('Configure one product loop layout and place it with a single shortcode.', 'productmaster') . '</p>';
         if (!empty($notice)) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
         }
         $this->render_product_loop_builder_tab();
         echo '</div>';
+    }
+
+    public function render_product_loop_shortcode($atts)
+    {
+        if (!class_exists('WooCommerce')) {
+            return '';
+        }
+
+        $loop = $this->get_saved_product_loop();
+        $atts = shortcode_atts(
+            array(
+                'columns' => $loop['columns'],
+                'limit' => $loop['limit'],
+            ),
+            $atts,
+            'productmaster_product_loop'
+        );
+
+        $columns = max(1, min(6, absint($atts['columns'])));
+        $limit = max(1, min(60, absint($atts['limit'])));
+        $query = new WP_Query(
+            array(
+                'post_type' => 'product',
+                'post_status' => 'publish',
+                'posts_per_page' => $limit,
+            )
+        );
+
+        if (!$query->have_posts()) {
+            return '<p>' . esc_html__('No products found.', 'productmaster') . '</p>';
+        }
+
+        ob_start();
+        echo '<div class="productmaster-product-loop-grid" style="--pm-loop-columns:' . esc_attr((string) $columns) . ';">';
+        while ($query->have_posts()) {
+            $query->the_post();
+            $product = wc_get_product(get_the_ID());
+            if (!$product) {
+                continue;
+            }
+            echo $this->render_product_loop_card_markup($product, $loop, false);
+        }
+        echo '</div>';
+        wp_reset_postdata();
+        return (string) ob_get_clean();
     }
 
     public function render_review_builder_page()
@@ -974,25 +1019,10 @@ class ProductMaster_Admin_Portal
             return __('Filter presentation updated.', 'productmaster');
         }
 
-        if ('add_product_loop' === $action) {
-            $loops = $this->get_saved_product_loops();
+        if ('save_product_loop' === $action) {
             $settings = $this->sanitize_product_loop_settings($_POST); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-            if (empty($settings['label'])) {
-                return __('Loop name is required.', 'productmaster');
-            }
-            $settings['id'] = sanitize_key(sanitize_title($settings['label']));
-            $loops[] = $settings;
-            update_option(self::LOOP_OPTION_KEY, $loops, false);
-            return __('Product loop saved.', 'productmaster');
-        }
-
-        if ('delete_product_loop' === $action) {
-            $loop_id = isset($_POST['loop_id']) ? sanitize_key(wp_unslash($_POST['loop_id'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-            $loops = array_values(array_filter($this->get_saved_product_loops(), function ($loop) use ($loop_id) {
-                return empty($loop['id']) || $loop['id'] !== $loop_id;
-            }));
-            update_option(self::LOOP_OPTION_KEY, $loops, false);
-            return __('Product loop deleted.', 'productmaster');
+            update_option(self::LOOP_OPTION_KEY, $settings, false);
+            return __('Product loop layout saved.', 'productmaster');
         }
 
 
@@ -2387,73 +2417,140 @@ class ProductMaster_Admin_Portal
 
     private function render_product_loop_builder_tab()
     {
-        $loops = $this->get_saved_product_loops();
+        $loop = $this->get_saved_product_loop();
+        $sample_product = $this->get_loop_preview_product();
+        $layout_fields = array(
+            'image' => __('Product image', 'productmaster'),
+            'title' => __('Product title', 'productmaster'),
+            'price' => __('Price', 'productmaster'),
+            'description' => __('Description', 'productmaster'),
+            'button' => __('Shop button', 'productmaster'),
+            'brand' => __('Brand names', 'productmaster'),
+            'categories' => __('Main categories', 'productmaster'),
+        );
 
         echo '<section class="productmaster-card">';
-        echo '<h2>' . esc_html__('Create Product Loop', 'productmaster') . '</h2>';
+        echo '<h2>' . esc_html__('Product Loop Builder', 'productmaster') . '</h2>';
         echo '<form method="post">';
         wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
-        echo '<input type="hidden" name="productmaster_action" value="add_product_loop" />';
+        echo '<input type="hidden" name="productmaster_action" value="save_product_loop" />';
         echo '<table class="form-table" role="presentation"><tbody>';
-        echo '<tr><th scope="row"><label for="pm_loop_label">' . esc_html__('Loop Name', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_label" name="label" type="text" required /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="4" /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="12" /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" placeholder="[products]" /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_shortcode">' . esc_html__('Shortcode', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_loop_shortcode" name="shortcode" type="text" value="' . esc_attr($loop['shortcode']) . '" /><p class="description">' . esc_html__('Use this shortcode where the loop should render. Default: [productmaster_product_loop]', 'productmaster') . '</p></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_columns">' . esc_html__('Columns', 'productmaster') . '</label></th><td><input id="pm_loop_columns" name="columns" type="number" min="1" max="6" value="' . esc_attr((string) $loop['columns']) . '" /></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_loop_limit">' . esc_html__('Products Per Page', 'productmaster') . '</label></th><td><input id="pm_loop_limit" name="limit" type="number" min="1" max="60" value="' . esc_attr((string) $loop['limit']) . '" /></td></tr>';
+        echo '<tr><th scope="row">' . esc_html__('Card elements', 'productmaster') . '</th><td><fieldset class="productmaster-loop-fields">';
+        foreach ($layout_fields as $key => $label) {
+            $visible = in_array($key, $loop['visible_fields'], true);
+            $order = array_search($key, $loop['field_order'], true);
+            echo '<p><label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
+            echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="7" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label></p>';
+        }
+        echo '</fieldset></td></tr>';
         echo '</tbody></table>';
-        submit_button(__('Save Product Loop', 'productmaster'));
+        submit_button(__('Save Product Loop Layout', 'productmaster'));
         echo '</form>';
         echo '</section>';
 
         echo '<section class="productmaster-card">';
-        echo '<h2>' . esc_html__('Saved Product Loops', 'productmaster') . '</h2>';
-        if (empty($loops)) {
-            echo '<p>' . esc_html__('No product loops have been saved yet.', 'productmaster') . '</p>';
+        echo '<h2>' . esc_html__('Backend Card Preview', 'productmaster') . '</h2>';
+        if (!$sample_product) {
+            echo '<p>' . esc_html__('Add at least one published product to preview the card layout.', 'productmaster') . '</p>';
         } else {
-            echo '<table class="widefat striped"><thead><tr><th>' . esc_html__('Name', 'productmaster') . '</th><th>' . esc_html__('Columns', 'productmaster') . '</th><th>' . esc_html__('Per Page', 'productmaster') . '</th><th>' . esc_html__('Shortcode', 'productmaster') . '</th><th>' . esc_html__('Action', 'productmaster') . '</th></tr></thead><tbody>';
-            foreach ($loops as $loop) {
-                $loop_id = !empty($loop['id']) ? $loop['id'] : sanitize_key(sanitize_title((string) ($loop['label'] ?? '')));
-                $shortcode = '[productmaster_loop id="' . $loop_id . '"]';
-                echo '<tr>';
-                echo '<td>' . esc_html($loop['label'] ?? '') . '</td>';
-                echo '<td>' . esc_html((string) ($loop['columns'] ?? 4)) . '</td>';
-                echo '<td>' . esc_html((string) ($loop['limit'] ?? 12)) . '</td>';
-                echo '<td><code>' . esc_html($shortcode) . '</code></td>';
-                echo '<td><form method="post">';
-                wp_nonce_field('productmaster_save_tax_filter', 'productmaster_tax_filter_nonce');
-                echo '<input type="hidden" name="productmaster_action" value="delete_product_loop" />';
-                echo '<input type="hidden" name="loop_id" value="' . esc_attr($loop_id) . '" />';
-                submit_button(__('Delete', 'productmaster'), 'delete small', 'submit', false);
-                echo '</form></td></tr>';
-            }
-            echo '</tbody></table>';
+            echo '<div class="productmaster-loop-preview">';
+            echo $this->render_product_loop_card_markup($sample_product, $loop, true);
+            echo '</div>';
         }
         echo '</section>';
     }
 
-    private function get_saved_product_loops()
+    private function get_saved_product_loop()
     {
-        $loops = get_option(self::LOOP_OPTION_KEY, array());
-        if (!is_array($loops)) {
-            return array();
+        $loop = get_option(self::LOOP_OPTION_KEY, array());
+        $defaults = $this->get_default_product_loop_settings();
+        if (!is_array($loop)) {
+            return $defaults;
         }
-
-        return array_values(array_filter($loops, function ($loop) {
-            return is_array($loop) && !empty($loop['label']);
-        }));
+        return array_merge($defaults, $loop);
     }
 
     private function sanitize_product_loop_settings($data)
     {
-        $label = isset($data['label']) ? sanitize_text_field(wp_unslash($data['label'])) : '';
         $columns = isset($data['columns']) ? absint($data['columns']) : 4;
         $limit = isset($data['limit']) ? absint($data['limit']) : 12;
         $shortcode = isset($data['shortcode']) ? sanitize_text_field(wp_unslash($data['shortcode'])) : '';
+        $visible_fields = isset($data['visible_fields']) ? array_values(array_map('sanitize_key', (array) wp_unslash($data['visible_fields']))) : array();
+        $field_order = isset($data['field_order']) ? (array) wp_unslash($data['field_order']) : array();
+        $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories');
+        $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
+        $sort_map = array();
+        foreach ($allowed_fields as $field_key) {
+            $sort_map[$field_key] = isset($field_order[$field_key]) ? max(1, absint($field_order[$field_key])) : 99;
+        }
+        uasort($sort_map, function ($a, $b) {
+            return $a <=> $b;
+        });
 
         return array(
-            'label' => $label,
             'columns' => max(1, min(6, $columns)),
             'limit' => max(1, min(60, $limit)),
-            'shortcode' => $shortcode,
+            'shortcode' => empty($shortcode) ? '[productmaster_product_loop]' : $shortcode,
+            'visible_fields' => $visible_fields,
+            'field_order' => array_keys($sort_map),
         );
+    }
+
+    private function get_default_product_loop_settings()
+    {
+        return array(
+            'columns' => 4,
+            'limit' => 12,
+            'shortcode' => '[productmaster_product_loop]',
+            'visible_fields' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
+            'field_order' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
+        );
+    }
+
+    private function get_loop_preview_product()
+    {
+        $products = wc_get_products(array('limit' => 1, 'status' => 'publish'));
+        return !empty($products) ? $products[0] : null;
+    }
+
+    private function render_product_loop_card_markup($product, $loop, $is_preview)
+    {
+        $visible = isset($loop['visible_fields']) ? (array) $loop['visible_fields'] : array();
+        $order = isset($loop['field_order']) ? (array) $loop['field_order'] : array();
+        $all_fields = array_unique(array_merge($order, array('image', 'title', 'price', 'description', 'button', 'brand', 'categories')));
+        $brand_names = wp_get_post_terms($product->get_id(), 'product_brand', array('fields' => 'names'));
+        $categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'names'));
+        $description = wp_strip_all_tags($product->get_short_description());
+        if (empty($description)) {
+            $description = wp_trim_words(wp_strip_all_tags($product->get_description()), 20);
+        }
+
+        ob_start();
+        echo '<article class="productmaster-loop-card' . ($is_preview ? ' is-preview' : '') . '">';
+        foreach ($all_fields as $field) {
+            if (!in_array($field, $visible, true)) {
+                continue;
+            }
+            if ('image' === $field) {
+                echo '<div class="productmaster-loop-field productmaster-loop-image"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $product->get_image('woocommerce_thumbnail') . '</a></div>';
+            } elseif ('title' === $field) {
+                echo '<h3 class="productmaster-loop-field productmaster-loop-title"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></h3>';
+            } elseif ('price' === $field) {
+                echo '<div class="productmaster-loop-field productmaster-loop-price">' . wp_kses_post($product->get_price_html()) . '</div>';
+            } elseif ('description' === $field && !empty($description)) {
+                echo '<p class="productmaster-loop-field productmaster-loop-description">' . esc_html($description) . '</p>';
+            } elseif ('button' === $field) {
+                echo '<div class="productmaster-loop-field productmaster-loop-button"><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></div>';
+            } elseif ('brand' === $field && !empty($brand_names) && !is_wp_error($brand_names)) {
+                echo '<div class="productmaster-loop-field productmaster-loop-brand"><strong>' . esc_html__('Brand:', 'productmaster') . '</strong> ' . esc_html(implode(', ', $brand_names)) . '</div>';
+            } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
+                echo '<div class="productmaster-loop-field productmaster-loop-categories"><strong>' . esc_html__('Categories:', 'productmaster') . '</strong> ' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</div>';
+            }
+        }
+        echo '</article>';
+        return (string) ob_get_clean();
     }
 }

@@ -2545,8 +2545,8 @@ class ProductMaster_Admin_Portal
         $field_styles = isset($data['field_styles']) ? (array) wp_unslash($data['field_styles']) : array();
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
         $allowed_tags = array_keys($this->get_product_loop_tag_options());
-        $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
-        $field_order = array_values(array_intersect($allowed_fields, array_map('sanitize_key', (array) $field_order)));
+        $visible_fields = array_values(array_intersect($visible_fields, $allowed_fields));
+        $field_order = array_values(array_intersect(array_map('sanitize_key', (array) $field_order), $allowed_fields));
         $field_order = array_values(array_unique(array_merge($field_order, $allowed_fields)));
 
         $sanitized_tags = array();
@@ -2631,10 +2631,10 @@ class ProductMaster_Admin_Portal
     {
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
         $visible = isset($loop['visible_fields']) && is_array($loop['visible_fields'])
-            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['visible_fields'])))
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['visible_fields']), $allowed_fields))
             : $allowed_fields;
         $order = isset($loop['field_order']) && is_array($loop['field_order'])
-            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['field_order'])))
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['field_order']), $allowed_fields))
             : $allowed_fields;
         $all_fields = array_values(array_unique(array_merge($order, $visible)));
         $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
@@ -2730,14 +2730,14 @@ class ProductMaster_Admin_Portal
 
         if (array_key_exists('visible_fields', $loop) && is_array($loop['visible_fields'])) {
             $normalized['visible_fields'] = array_values(
-                array_intersect($allowed_fields, array_map('sanitize_key', $loop['visible_fields']))
+                array_intersect(array_map('sanitize_key', $loop['visible_fields']), $allowed_fields)
             );
         } else {
             $normalized['visible_fields'] = $defaults['visible_fields'];
         }
 
         $saved_order = isset($loop['field_order']) && is_array($loop['field_order'])
-            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['field_order'])))
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['field_order']), $allowed_fields))
             : array();
         $normalized['field_order'] = array_values(array_unique(array_merge($saved_order, $defaults['field_order'])));
         $normalized['field_tags'] = array_merge($defaults['field_tags'], isset($loop['field_tags']) && is_array($loop['field_tags']) ? $loop['field_tags'] : array());

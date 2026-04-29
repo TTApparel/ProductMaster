@@ -98,5 +98,39 @@
     $(function () {
         syncImageChildrenMenuWidths();
         $(window).on('resize', syncImageChildrenMenuWidths);
+
+        $('.productmaster-loop-card').each(function () {
+            var $card = $(this);
+            var $mainImage = $card.find('.productmaster-loop-main-image').first();
+            if (!$mainImage.length) {
+                return;
+            }
+            var defaultSrc = $mainImage.attr('src');
+            $card.find('.productmaster-loop-color-swatch[data-variation-image]').on('mouseenter', function () {
+                var targetSrc = $(this).attr('data-variation-image');
+                if (targetSrc) {
+                    $mainImage.attr('src', targetSrc);
+                }
+            }).on('mouseleave', function () {
+                $mainImage.attr('src', defaultSrc);
+            });
+        });
+
+        $('.productmaster-loop-sortable').each(function () {
+            $(this).sortable({
+                axis: 'y',
+                containment: 'parent',
+                handle: '.productmaster-drag-handle',
+                items: '.productmaster-loop-sortable-item',
+                placeholder: 'productmaster-loop-sortable-placeholder',
+                forcePlaceholderSize: true,
+                start: function (event, ui) {
+                    ui.item.addClass('is-dragging');
+                },
+                stop: function (event, ui) {
+                    ui.item.removeClass('is-dragging');
+                }
+            });
+        });
     });
 })(jQuery);

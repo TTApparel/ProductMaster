@@ -2451,6 +2451,7 @@ class ProductMaster_Admin_Portal
             'button' => __('Shop button', 'productmaster'),
             'brand' => __('Brand names', 'productmaster'),
             'categories' => __('Main categories', 'productmaster'),
+            'color_variations' => __('Color variations', 'productmaster'),
         );
         $tag_options = $this->get_product_loop_tag_options();
         $field_styles = isset($loop['field_styles']) && is_array($loop['field_styles']) ? $loop['field_styles'] : array();
@@ -2471,7 +2472,7 @@ class ProductMaster_Admin_Portal
             $current_tag = isset($loop['field_tags'][$key]) ? $loop['field_tags'][$key] : 'div';
             $current_style = isset($field_styles[$key]) && is_array($field_styles[$key]) ? $field_styles[$key] : array('bold' => 0, 'italic' => 0, 'font_size' => 16);
             echo '<p><label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
-            echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="7" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label> ';
+            echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="8" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label> ';
             echo '<label>' . esc_html__('HTML tag', 'productmaster') . ' <select name="field_tags[' . esc_attr($key) . ']">';
             foreach ($tag_options as $tag => $tag_label) {
                 echo '<option value="' . esc_attr($tag) . '" ' . selected($current_tag, $tag, false) . '>' . esc_html($tag_label) . '</option>';
@@ -2520,7 +2521,7 @@ class ProductMaster_Admin_Portal
         $field_order = isset($data['field_order']) ? (array) wp_unslash($data['field_order']) : array();
         $field_tags = isset($data['field_tags']) ? (array) wp_unslash($data['field_tags']) : array();
         $field_styles = isset($data['field_styles']) ? (array) wp_unslash($data['field_styles']) : array();
-        $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories');
+        $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
         $allowed_tags = array_keys($this->get_product_loop_tag_options());
         $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
         $sort_map = array();
@@ -2564,7 +2565,7 @@ class ProductMaster_Admin_Portal
             'limit' => 12,
             'shortcode' => '[productmaster_product_loop]',
             'visible_fields' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
-            'field_order' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
+            'field_order' => array('image', 'title', 'price', 'description', 'color_variations', 'button', 'brand', 'categories'),
             'field_tags' => array(
                 'image' => 'div',
                 'title' => 'h3',
@@ -2573,6 +2574,7 @@ class ProductMaster_Admin_Portal
                 'button' => 'div',
                 'brand' => 'p',
                 'categories' => 'p',
+                'color_variations' => 'div',
             ),
             'field_styles' => array(
                 'image' => array('bold' => 0, 'italic' => 0, 'font_size' => 16),
@@ -2582,6 +2584,7 @@ class ProductMaster_Admin_Portal
                 'button' => array('bold' => 0, 'italic' => 0, 'font_size' => 16),
                 'brand' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
                 'categories' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
+                'color_variations' => array('bold' => 0, 'italic' => 0, 'font_size' => 14),
             ),
         );
     }
@@ -2611,9 +2614,10 @@ class ProductMaster_Admin_Portal
     {
         $visible = isset($loop['visible_fields']) ? (array) $loop['visible_fields'] : array();
         $order = isset($loop['field_order']) ? (array) $loop['field_order'] : array();
-        $all_fields = array_unique(array_merge($order, array('image', 'title', 'price', 'description', 'button', 'brand', 'categories')));
+        $all_fields = array_unique(array_merge($order, array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations')));
         $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
         $field_styles = isset($loop['field_styles']) ? (array) $loop['field_styles'] : array();
+        $color_variation_images = $this->get_product_color_variation_images($product);
         $brand_names = wp_get_post_terms($product->get_id(), 'product_brand', array('fields' => 'names'));
         $categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'names'));
         $description = wp_strip_all_tags($product->get_short_description());
@@ -2637,7 +2641,11 @@ class ProductMaster_Admin_Portal
                 $tag = 'div';
             }
             if ('image' === $field) {
-                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $product->get_image('woocommerce_thumbnail') . '</a></' . esc_attr($tag) . '>';
+                $main_image_url = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+                if (empty($main_image_url)) {
+                    $main_image_url = wc_placeholder_img_src('woocommerce_thumbnail');
+                }
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '"><img class="productmaster-loop-main-image" src="' . esc_url($main_image_url) . '" alt="' . esc_attr($product->get_name()) . '" /></a></' . esc_attr($tag) . '>';
             } elseif ('title' === $field) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-title" ' . $inline_style . '><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></' . esc_attr($tag) . '>';
             } elseif ('price' === $field) {
@@ -2650,9 +2658,44 @@ class ProductMaster_Admin_Portal
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand" ' . $inline_style . '>' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
+            } elseif ('color_variations' === $field && !empty($color_variation_images)) {
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
+                echo '<div class="productmaster-loop-color-slider">';
+                foreach ($color_variation_images as $variation_image) {
+                    echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($variation_image) . '" alt="" data-variation-image="' . esc_url($variation_image) . '" />';
+                }
+                echo '</div></' . esc_attr($tag) . '>';
             }
         }
         echo '</article>';
         return (string) ob_get_clean();
+    }
+
+    private function get_product_color_variation_images($product)
+    {
+        if (!$product || !$product->is_type('variable')) {
+            return array();
+        }
+
+        $images = array();
+        $variations = $product->get_available_variations();
+        foreach ($variations as $variation) {
+            $image_url = isset($variation['image']['thumbnail_src']) ? esc_url_raw((string) $variation['image']['thumbnail_src']) : '';
+            if (empty($image_url)) {
+                continue;
+            }
+            $attributes = isset($variation['attributes']) && is_array($variation['attributes']) ? $variation['attributes'] : array();
+            $has_color_attr = false;
+            foreach (array_keys($attributes) as $attr_key) {
+                if (false !== strpos((string) $attr_key, 'color')) {
+                    $has_color_attr = true;
+                    break;
+                }
+            }
+            if ($has_color_attr) {
+                $images[] = $image_url;
+            }
+        }
+        return array_values(array_unique($images));
     }
 }

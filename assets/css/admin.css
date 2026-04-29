@@ -48,6 +48,21 @@
     height: auto;
 }
 
+.productmaster-loop-color-slider {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.productmaster-loop-color-swatch {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border: 1px solid #dcdcde;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
 .productmaster-card .meta {
     margin-top: -8px;
     color: #50575e;

@@ -186,3 +186,13 @@
     display: grid;
     gap: 6px;
 }
+
+.productmaster-active-filter-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.productmaster-active-filter-label {
+    font-weight: 600;
+}

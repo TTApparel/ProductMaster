@@ -116,6 +116,17 @@
             });
         });
 
+        $(document).on('click', '.productmaster-loop-color-nav', function () {
+            var $button = $(this);
+            var $carousel = $button.closest('.productmaster-loop-color-carousel');
+            var $slider = $carousel.find('.productmaster-loop-color-slider').first();
+            if (!$slider.length) {
+                return;
+            }
+            var direction = $button.hasClass('is-prev') ? -1 : 1;
+            $slider.scrollLeft($slider.scrollLeft() + (direction * 40));
+        });
+
         $('.productmaster-loop-sortable').each(function () {
             $(this).sortable({
                 axis: 'y',

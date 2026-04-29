@@ -2747,10 +2747,14 @@ class ProductMaster_Admin_Portal
                     continue;
                 }
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
-                echo '<div class="productmaster-loop-color-slider" aria-label="' . esc_attr__('Color variations', 'productmaster') . '">';
+                echo '<div class="productmaster-loop-color-carousel" aria-label="' . esc_attr__('Color variations', 'productmaster') . '">';
+                echo '<button type="button" class="productmaster-loop-color-nav is-prev" aria-label="' . esc_attr__('Previous colors', 'productmaster') . '">‹</button>';
+                echo '<div class="productmaster-loop-color-slider">';
                 foreach ($color_variation_images as $variation_image) {
                     echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($variation_image) . '" alt="" data-variation-image="' . esc_url($variation_image) . '" />';
                 }
+                echo '</div>';
+                echo '<button type="button" class="productmaster-loop-color-nav is-next" aria-label="' . esc_attr__('Next colors', 'productmaster') . '">›</button>';
                 echo '</div></' . esc_attr($tag) . '>';
             }
         }

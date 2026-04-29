@@ -77,12 +77,33 @@
     margin-right: 6px;
 }
 
+.productmaster-loop-color-carousel {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .productmaster-loop-color-slider {
     display: flex;
     gap: 4px;
     overflow-x: auto;
     white-space: nowrap;
     padding-bottom: 2px;
+    scrollbar-width: none;
+}
+
+.productmaster-loop-color-slider::-webkit-scrollbar {
+    display: none;
+}
+
+.productmaster-loop-color-nav {
+    width: 18px;
+    height: 18px;
+    line-height: 16px;
+    border: 1px solid #dcdcde;
+    background: #fff;
+    cursor: pointer;
+    padding: 0;
 }
 
 .productmaster-loop-color-swatch {

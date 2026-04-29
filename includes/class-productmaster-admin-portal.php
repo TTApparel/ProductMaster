@@ -192,14 +192,14 @@ class ProductMaster_Admin_Portal
         echo '<input type="hidden" name="productmaster_action" value="add_filter" />';
         echo '<table class="form-table" role="presentation"><tbody>';
         echo '<tr><th scope="row"><label for="pm_filter_label">' . esc_html__('Filter Label', 'productmaster') . '</label></th><td><input class="regular-text" id="pm_filter_label" name="filter_label" type="text" required /></td></tr>';
-        echo '<tr><th scope="row"><label for="pm_filter_taxonomy">' . esc_html__('Category / Attribute', 'productmaster') . '</label></th><td><select id="pm_filter_taxonomy" name="filter_taxonomy">';
-        foreach ($taxonomy_options as $taxonomy => $label) {
-            echo '<option value="' . esc_attr($taxonomy) . '">' . esc_html($label) . '</option>';
-        }
-        echo '</select></td></tr>';
         echo '<tr><th scope="row"><label for="pm_filter_type">' . esc_html__('Filter Type', 'productmaster') . '</label></th><td><select id="pm_filter_type" name="filter_type">';
         foreach ($this->get_supported_filter_types() as $type => $label) {
             echo '<option value="' . esc_attr($type) . '">' . esc_html($label) . '</option>';
+        }
+        echo '</select></td></tr>';
+        echo '<tr><th scope="row"><label for="pm_filter_taxonomy">' . esc_html__('Category / Attribute', 'productmaster') . '</label></th><td><select id="pm_filter_taxonomy" name="filter_taxonomy">';
+        foreach ($taxonomy_options as $taxonomy => $label) {
+            echo '<option value="' . esc_attr($taxonomy) . '">' . esc_html($label) . '</option>';
         }
         echo '</select></td></tr>';
         echo '</tbody></table>';
@@ -609,6 +609,7 @@ class ProductMaster_Admin_Portal
 
         ob_start();
         echo '<form class="productmaster-filters-form" method="get">';
+        $this->render_preserved_filter_query_inputs($filters);
         foreach ($filters as $filter) {
             $this->render_single_filter_input($filter);
         }
@@ -623,6 +624,44 @@ class ProductMaster_Admin_Portal
         $value_match = isset($presentation['value_match']) ? sanitize_key((string) $presentation['value_match']) : 'or';
 
         return 'and' === $value_match ? 'AND' : 'IN';
+    }
+
+    private function render_preserved_filter_query_inputs($rendered_filters)
+    {
+        $all_filter_keys = $this->get_filter_query_arg_keys();
+        $keys_rendered_in_form = array();
+
+        foreach ((array) $rendered_filters as $filter) {
+            $keys_rendered_in_form = array_merge($keys_rendered_in_form, $this->get_filter_query_arg_keys_by_filter($filter));
+        }
+        $keys_rendered_in_form = array_values(array_unique($keys_rendered_in_form));
+
+        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $key = sanitize_key((string) $key);
+            if (!in_array($key, $all_filter_keys, true)) {
+                continue;
+            }
+
+            if (in_array($key, $keys_rendered_in_form, true)) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $clean_values = array_values(
+                    array_filter(
+                        array_map(
+                            'sanitize_text_field',
+                            wp_unslash($value)
+                        )
+                    )
+                );
+                echo '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr(implode(',', $clean_values)) . '" />';
+                continue;
+            }
+
+            $clean_value = sanitize_text_field(wp_unslash($value));
+            echo '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr($clean_value) . '" />';
+        }
     }
 
     public function apply_filters_to_product_query($query)
@@ -648,14 +687,16 @@ class ProductMaster_Admin_Portal
         foreach ($filters as $filter) {
             $param_key = 'pmf_' . $filter['id'];
             $raw_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $raw_values = $this->normalize_filter_values($raw_value);
             $allowed_terms = isset($filter['presentation']['allowed_terms']) ? (array) $filter['presentation']['allowed_terms'] : array();
             $manual_hierarchy_terms = $this->get_manual_hierarchy_allowed_terms($filter);
             if (!empty($manual_hierarchy_terms)) {
                 $allowed_terms = $manual_hierarchy_terms;
             }
 
-            if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && is_array($raw_value) && !empty($raw_value)) {
-                $terms = array_map('sanitize_title', $raw_value);
+            if (in_array($filter['type'], array('checkboxes', 'image_boxes'), true) && !empty($raw_values)) {
+                $terms = array_map('sanitize_title', $raw_values);
+                $terms = $this->expand_terms_by_manual_hierarchy($terms, $filter);
                 if (!empty($allowed_terms)) {
                     $terms = array_values(array_intersect($terms, $allowed_terms));
                 }
@@ -670,6 +711,7 @@ class ProductMaster_Admin_Portal
 
             if ('drop_down_selectors' === $filter['type'] && !empty($raw_value)) {
                 $dropdown_term = sanitize_title((string) $raw_value);
+                $dropdown_terms = $this->expand_terms_by_manual_hierarchy(array($dropdown_term), $filter);
                 if (!empty($allowed_terms) && !in_array($dropdown_term, $allowed_terms, true)) {
                     continue;
                 }
@@ -677,7 +719,7 @@ class ProductMaster_Admin_Portal
                 $filter_tax_query[] = array(
                     'taxonomy' => $filter['taxonomy'],
                     'field' => 'slug',
-                    'terms' => array($dropdown_term),
+                    'terms' => $dropdown_terms,
                     'operator' => $this->get_filter_value_match_operator($filter),
                 );
             }
@@ -686,6 +728,7 @@ class ProductMaster_Admin_Portal
                 $parent_value = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $child_value = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                 $dropdown_terms = array_filter(array($parent_value, $child_value));
+                $dropdown_terms = $this->expand_terms_by_manual_hierarchy($dropdown_terms, $filter);
 
                 if (!empty($allowed_terms)) {
                     $dropdown_terms = array_values(array_intersect($dropdown_terms, $allowed_terms));
@@ -703,6 +746,48 @@ class ProductMaster_Admin_Portal
 
             if ('search_fields' === $filter['type'] && !empty($raw_value)) {
                 $query->set('s', sanitize_text_field((string) $raw_value));
+            }
+
+            if ('multi_filter' === $filter['type'] && !empty($raw_value)) {
+                $selected_pairs = $this->normalize_multi_filter_values($raw_value);
+                $selected_by_source = array();
+                foreach ($selected_pairs as $pair) {
+                    if (false === strpos($pair, ':')) {
+                        continue;
+                    }
+                    list($source_id, $term_slug) = explode(':', $pair, 2);
+                    $source_id = sanitize_key($source_id);
+                    $term_slug = sanitize_title($term_slug);
+                    if ('' === $source_id || '' === $term_slug) {
+                        continue;
+                    }
+                    $selected_by_source[$source_id][] = $term_slug;
+                }
+
+                if (empty($selected_by_source)) {
+                    continue;
+                }
+
+                $filters_by_id = array();
+                foreach ($filters as $saved_filter) {
+                    if (!empty($saved_filter['id'])) {
+                        $filters_by_id[$saved_filter['id']] = $saved_filter;
+                    }
+                }
+
+                foreach ($selected_by_source as $source_id => $source_terms) {
+                    if (empty($filters_by_id[$source_id]['taxonomy'])) {
+                        continue;
+                    }
+                    $source_filter = $filters_by_id[$source_id];
+                    $source_terms = $this->expand_terms_by_manual_hierarchy($source_terms, $source_filter);
+                    $filter_tax_query[] = array(
+                        'taxonomy' => $source_filter['taxonomy'],
+                        'field' => 'slug',
+                        'terms' => array_values(array_unique(array_filter($source_terms))),
+                        'operator' => $this->get_filter_value_match_operator($source_filter),
+                    );
+                }
             }
         }
 
@@ -877,6 +962,7 @@ class ProductMaster_Admin_Portal
             'drop_down_selectors' => __('Drop down selectors', 'productmaster'),
             'sliders' => __('Sliders', 'productmaster'),
             'search_fields' => __('Search Fields', 'productmaster'),
+            'multi_filter' => __('Multi-Filter', 'productmaster'),
             'currently_selected_filters' => __('Currently Selected Filters', 'productmaster'),
             'reset_button' => __('Reset Products Button', 'productmaster'),
         );
@@ -886,6 +972,7 @@ class ProductMaster_Admin_Portal
     {
         $param_key = 'pmf_' . $filter['id'];
         $selected_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $selected_values = $this->normalize_filter_values($selected_value);
         $terms = get_terms(
             array(
                 'taxonomy' => $filter['taxonomy'],
@@ -906,19 +993,19 @@ class ProductMaster_Admin_Portal
 
         if ('checkboxes' === $filter['type']) {
             if ('enabled' === $presentation['hierarchical_visual'] && is_taxonomy_hierarchical($filter['taxonomy'])) {
-                $this->render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_value, $presentation);
+                $this->render_hierarchical_checkbox_terms($terms, $filter, $param_key, $selected_values, $presentation);
             } else {
                 foreach ($terms as $term) {
                     if (!empty($presentation['allowed_terms']) && !in_array($term->slug, $presentation['allowed_terms'], true)) {
                         continue;
                     }
-                    $checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
+                    $checked = in_array($term->slug, $selected_values, true);
                     $class = 'image_boxes' === $filter['type'] ? 'productmaster-image-box' : '';
-                    echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+                    echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
                 }
             }
         } elseif ('image_boxes' === $filter['type']) {
-            $this->render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation);
+            $this->render_image_box_filter($filter, $terms, $param_key, $selected_values, $presentation);
         } elseif ('drop_down_selectors' === $filter['type']) {
             $extra_class = 'enabled' === $presentation['hierarchical_visual'] ? 'productmaster-hierarchical-enabled' : '';
             $manual_hierarchy = isset($presentation['hierarchy_map']) ? (array) $presentation['hierarchy_map'] : array();
@@ -941,8 +1028,10 @@ class ProductMaster_Admin_Portal
             echo '<label>' . esc_html__('Max Price', 'productmaster') . ' <input type="number" min="0" step="0.01" name="pmf_max_price" value="' . esc_attr((string) $max) . '" /></label>';
         } elseif ('search_fields' === $filter['type']) {
             echo '<input type="search" name="' . esc_attr($param_key) . '" value="' . esc_attr((string) $selected_value) . '" placeholder="' . esc_attr__('Search products', 'productmaster') . '" />';
+        } elseif ('multi_filter' === $filter['type']) {
+            $this->render_multi_filter_input($filter);
         } elseif ('currently_selected_filters' === $filter['type']) {
-            $this->render_currently_selected_filters();
+            $this->render_currently_selected_filters($filter);
         } elseif ('reset_button' === $filter['type']) {
             $reset_url = remove_query_arg($this->get_filter_query_arg_keys());
             echo '<a class="button" href="' . esc_url($reset_url) . '">' . esc_html__('Reset Products', 'productmaster') . '</a>';
@@ -951,31 +1040,75 @@ class ProductMaster_Admin_Portal
         echo '</fieldset>';
     }
 
-    private function render_currently_selected_filters()
+    private function render_currently_selected_filters($filter)
     {
-        $selected = array();
-        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-            if (0 !== strpos((string) $key, 'pmf_')) {
+        $all_trackable_filters = $this->get_trackable_filters(isset($filter['id']) ? $filter['id'] : '');
+        $all_trackable_ids = wp_list_pluck($all_trackable_filters, 'id');
+        $configured_filter_ids = isset($filter['presentation']['selected_filter_ids']) ? (array) $filter['presentation']['selected_filter_ids'] : array();
+        $selected_filter_ids = empty($configured_filter_ids) ? $all_trackable_ids : array_values(array_intersect($configured_filter_ids, $all_trackable_ids));
+
+        $active_selection_rows = array();
+        $clear_keys_all = array();
+
+        foreach ($all_trackable_filters as $tracked_filter) {
+            if (!in_array($tracked_filter['id'], $selected_filter_ids, true)) {
                 continue;
             }
 
-            if (is_array($value)) {
-                $selected[] = sanitize_text_field(implode(', ', wp_unslash($value)));
-            } else {
-                $selected[] = sanitize_text_field(wp_unslash($value));
+            $param_key = 'pmf_' . $tracked_filter['id'];
+            $raw_value = isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $selected_values = array();
+
+            if ('sliders' === $tracked_filter['type']) {
+                $min_price = isset($_GET['pmf_min_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_min_price'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $max_price = isset($_GET['pmf_max_price']) ? wc_format_decimal(wp_unslash($_GET['pmf_max_price'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                if ('' !== $min_price || '' !== $max_price) {
+                    $selected_values[] = sprintf(
+                        /* translators: 1: min price, 2: max price */
+                        __('Min %1$s, Max %2$s', 'productmaster'),
+                        '' !== $min_price ? $min_price : __('Any', 'productmaster'),
+                        '' !== $max_price ? $max_price : __('Any', 'productmaster')
+                    );
+                }
+            } elseif (!empty($raw_value)) {
+                $selected_values = $this->normalize_filter_values($raw_value);
+            } elseif ('drop_down_selectors' === $tracked_filter['type']) {
+                $parent = isset($_GET[$param_key . '_parent']) ? sanitize_title(wp_unslash($_GET[$param_key . '_parent'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $child = isset($_GET[$param_key . '_child']) ? sanitize_title(wp_unslash($_GET[$param_key . '_child'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $selected_values = array_filter(array($parent, $child));
             }
+
+            if (empty($selected_values)) {
+                continue;
+            }
+
+            if (!empty($tracked_filter['taxonomy'])) {
+                $selected_values = $this->translate_term_slugs_for_filter($tracked_filter, $selected_values);
+            } else {
+                $selected_values = array_map('sanitize_text_field', $selected_values);
+            }
+
+            $clear_keys = $this->get_filter_query_arg_keys_by_filter($tracked_filter);
+            $clear_keys_all = array_merge($clear_keys_all, $clear_keys);
+            $active_selection_rows[] = array(
+                'label' => $tracked_filter['label'],
+                'values' => $selected_values,
+                'clear_url' => esc_url(remove_query_arg($clear_keys)),
+            );
         }
 
-        if (empty($selected)) {
+        if (empty($active_selection_rows)) {
             echo '<p>' . esc_html__('No filters selected.', 'productmaster') . '</p>';
             return;
         }
 
-        echo '<ul>';
-        foreach ($selected as $value) {
-            echo '<li>' . esc_html($value) . '</li>';
+        echo '<ul class="productmaster-active-filter-list">';
+        foreach ($active_selection_rows as $row) {
+            echo '<li><span class="productmaster-active-filter-label">' . esc_html($row['label']) . ':</span> ' . esc_html(implode(', ', $row['values'])) . ' <a href="' . esc_url($row['clear_url']) . '">' . esc_html__('Clear', 'productmaster') . '</a></li>';
         }
         echo '</ul>';
+        $clear_all_url = esc_url(remove_query_arg(array_values(array_unique($clear_keys_all))));
+        echo '<p><a class="button button-secondary" href="' . esc_url($clear_all_url) . '">' . esc_html__('Clear all selected filters', 'productmaster') . '</a></p>';
     }
 
     private function get_filter_query_arg_keys()
@@ -992,9 +1125,102 @@ class ProductMaster_Admin_Portal
         return $keys;
     }
 
+    private function get_filter_query_arg_keys_by_filter($filter)
+    {
+        if (empty($filter['id'])) {
+            return array();
+        }
+
+        if (isset($filter['type']) && 'sliders' === $filter['type']) {
+            return array('pmf_min_price', 'pmf_max_price');
+        }
+
+        $param_key = 'pmf_' . $filter['id'];
+        return array($param_key, $param_key . '_parent', $param_key . '_child');
+    }
+
+    private function get_trackable_filters($current_filter_id)
+    {
+        $trackable_filters = array();
+        foreach ($this->get_saved_taxonomy_filters() as $saved_filter) {
+            if (empty($saved_filter['id']) || empty($saved_filter['label'])) {
+                continue;
+            }
+
+            if ($saved_filter['id'] === $current_filter_id) {
+                continue;
+            }
+
+            if (in_array($saved_filter['type'], array('currently_selected_filters', 'reset_button'), true)) {
+                continue;
+            }
+
+            $trackable_filters[] = $saved_filter;
+        }
+
+        return $trackable_filters;
+    }
+
+    private function translate_term_slugs_for_filter($filter, $term_slugs)
+    {
+        if (empty($filter['taxonomy'])) {
+            return array_values(array_map('sanitize_text_field', (array) $term_slugs));
+        }
+
+        $term_names = array();
+        foreach ((array) $term_slugs as $slug) {
+            $slug = sanitize_title((string) $slug);
+            if ('' === $slug) {
+                continue;
+            }
+
+            $term = get_term_by('slug', $slug, $filter['taxonomy']);
+            if ($term && !is_wp_error($term) && !empty($term->name)) {
+                $term_names[] = $term->name;
+                continue;
+            }
+
+            $term_names[] = $slug;
+        }
+
+        return $term_names;
+    }
+
+    private function normalize_filter_values($raw_value)
+    {
+        if (is_array($raw_value)) {
+            return array_values(array_filter(array_map('sanitize_title', $raw_value)));
+        }
+
+        if (!is_string($raw_value) || '' === trim($raw_value)) {
+            return array();
+        }
+
+        if (false !== strpos($raw_value, ',')) {
+            $parts = explode(',', $raw_value);
+            return array_values(array_filter(array_map('sanitize_title', $parts)));
+        }
+
+        return array(sanitize_title($raw_value));
+    }
+
+    private function normalize_multi_filter_values($raw_value)
+    {
+        if (is_array($raw_value)) {
+            return array_values(array_filter(array_map('sanitize_text_field', $raw_value)));
+        }
+
+        if (!is_string($raw_value) || '' === trim($raw_value)) {
+            return array();
+        }
+
+        return array_values(array_filter(array_map('sanitize_text_field', explode(',', $raw_value))));
+    }
+
     private function get_filter_types_without_taxonomy()
     {
         return array(
+            'multi_filter' => true,
             'currently_selected_filters' => true,
             'reset_button' => true,
         );
@@ -1009,12 +1235,17 @@ class ProductMaster_Admin_Portal
             )
         );
         $effective_allowed_terms = !empty($manual_hierarchy_terms) ? $manual_hierarchy_terms : $presentation['allowed_terms'];
-        $taxonomy_terms = get_terms(
-            array(
-                'taxonomy' => $filter['taxonomy'],
-                'hide_empty' => false,
-            )
-        );
+        $taxonomy_terms = array();
+        if (!empty($filter['taxonomy'])) {
+            $taxonomy_terms = get_terms(
+                array(
+                    'taxonomy' => $filter['taxonomy'],
+                    'hide_empty' => false,
+                )
+            );
+        }
+        $is_currently_selected_filter = isset($filter['type']) && 'currently_selected_filters' === $filter['type'];
+        $is_reset_button_filter = isset($filter['type']) && 'reset_button' === $filter['type'];
         $has_parent_terms = false;
         foreach ($taxonomy_terms as $term) {
             if ((int) $term->parent === 0) {
@@ -1036,60 +1267,99 @@ class ProductMaster_Admin_Portal
         echo '<tr><th><label for="pm_bg_color">' . esc_html__('Background color', 'productmaster') . '</label></th><td><input id="pm_bg_color" name="bg_color" type="text" value="' . esc_attr($presentation['bg_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_text_color">' . esc_html__('Text color', 'productmaster') . '</label></th><td><input id="pm_text_color" name="text_color" type="text" value="' . esc_attr($presentation['text_color']) . '" /></td></tr>';
         echo '<tr><th><label for="pm_accent_color">' . esc_html__('Accent color', 'productmaster') . '</label></th><td><input id="pm_accent_color" name="accent_color" type="text" value="' . esc_attr($presentation['accent_color']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_hierarchical_visual">' . esc_html__('Hierarchical', 'productmaster') . '</label></th><td><select id="pm_hierarchical_visual" name="hierarchical_visual"><option value="disabled" ' . selected('disabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Disabled', 'productmaster') . '</option><option value="enabled" ' . selected('enabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Enabled', 'productmaster') . '</option></select></td></tr>';
-        echo '<tr><th><label for="pm_value_match">' . esc_html__('Value matching (within filter)', 'productmaster') . '</label></th><td><select id="pm_value_match" name="value_match"><option value="or" ' . selected('or', $presentation['value_match'], false) . '>' . esc_html__('OR (default)', 'productmaster') . '</option><option value="and" ' . selected('and', $presentation['value_match'], false) . '>' . esc_html__('AND', 'productmaster') . '</option></select><p class="description">' . esc_html__('This controls how multiple values inside this single filter are combined. Different filters are always combined with AND.', 'productmaster') . '</p></td></tr>';
-        echo '<tr><th><label for="pm_hierarchy_map_text">' . esc_html__('Manual Hierarchy Map', 'productmaster') . '</label></th><td><textarea id="pm_hierarchy_map_text" name="hierarchy_map_text" rows="6" class="large-text code">' . esc_textarea($presentation['hierarchy_map_text']) . '</textarea><p class="description">';
-        echo esc_html__('Use format: parent_slug:child_slug_1,child_slug_2 (one parent per line).', 'productmaster') . ' ';
-        if (!$has_parent_terms) {
-            echo esc_html__('No parent terms detected in this taxonomy. Use this map to define parent/child relationships.', 'productmaster');
-        } else {
-            echo esc_html__('When set, only mapped terms are shown and Included taxonomy terms are ignored.', 'productmaster');
-        }
-        echo '</p></td></tr>';
-        echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
-        echo '<tr><th>' . esc_html__('Image box size (px)', 'productmaster') . '</th><td><label for="pm_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /> <label for="pm_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
-        echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_child_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_child_image_box_width" name="child_image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_width']) . '" /> <label for="pm_child_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_child_image_box_height" name="child_image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_height']) . '" /></td></tr>';
-        echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
-        usort(
-            $taxonomy_terms,
-            function ($a, $b) use ($effective_allowed_terms) {
-                $a_selected = in_array($a->slug, $effective_allowed_terms, true);
-                $b_selected = in_array($b->slug, $effective_allowed_terms, true);
-                if ($a_selected !== $b_selected) {
-                    return $a_selected ? -1 : 1;
-                }
-
-                return strcmp($a->name, $b->name);
+        if ($is_currently_selected_filter || (isset($filter['type']) && 'multi_filter' === $filter['type'])) {
+            $trackable_filters = $this->get_trackable_filters(isset($filter['id']) ? $filter['id'] : '');
+            if (isset($filter['type']) && 'multi_filter' === $filter['type']) {
+                $trackable_filters = array_values(
+                    array_filter(
+                        $trackable_filters,
+                        function ($trackable_filter) {
+                            return isset($trackable_filter['type']) && 'image_boxes' === $trackable_filter['type'];
+                        }
+                    )
+                );
             }
-        );
-
-        $is_image_box_filter = isset($filter['type']) && 'image_boxes' === $filter['type'];
-        echo '<div class="productmaster-term-toggle-header">';
-        echo '<span>' . esc_html__('Value', 'productmaster') . '</span>';
-        echo '<span>' . esc_html__('Slug', 'productmaster') . '</span>';
-        if ($is_image_box_filter) {
-            echo '<span>' . esc_html__('Image', 'productmaster') . '</span>';
+            echo '<tr><th><label for="pm_selected_filter_ids">' . esc_html__('Source filters to show', 'productmaster') . '</label></th><td><div id="pm_selected_filter_ids" class="productmaster-term-toggle-list">';
+            if (empty($trackable_filters)) {
+                echo '<p>' . esc_html__('No other filters are available yet. Create category/attribute filters first.', 'productmaster') . '</p>';
+            } else {
+                foreach ($trackable_filters as $trackable_filter) {
+                    $is_selected = in_array($trackable_filter['id'], (array) $presentation['selected_filter_ids'], true);
+                    $source_filter_image = isset($presentation['source_filter_images'][$trackable_filter['id']]) ? (string) $presentation['source_filter_images'][$trackable_filter['id']] : '';
+                    echo '<label class="productmaster-term-toggle">';
+                    echo '<input type="checkbox" name="selected_filter_ids[]" value="' . esc_attr($trackable_filter['id']) . '" ' . checked($is_selected, true, false) . ' />';
+                    echo '<span>' . esc_html($trackable_filter['label']) . '</span>';
+                    echo '</label>';
+                    echo '<div class="productmaster-term-image-control">';
+                    echo '<input type="hidden" class="productmaster-term-image-input" name="source_filter_images[' . esc_attr($trackable_filter['id']) . ']" value="' . esc_attr($source_filter_image) . '" />';
+                    echo '<button type="button" class="button button-small productmaster-select-image">' . esc_html__('Choose image', 'productmaster') . '</button>';
+                    echo '<span class="productmaster-image-selected-label">' . esc_html(!empty($source_filter_image) ? __('Image selected', 'productmaster') : __('No image', 'productmaster')) . '</span>';
+                    echo '</div>';
+                }
+            }
+            echo '</div><p class="description">' . esc_html__('Choose which labeled filters this block will track and display for the current view. Leave all unchecked to include all eligible filters.', 'productmaster') . '</p></td></tr>';
         }
-        echo '</div>';
-        foreach ($taxonomy_terms as $term) {
-            $selected = in_array($term->slug, $effective_allowed_terms, true);
-            $term_image = isset($presentation['term_images'][$term->slug]) ? $presentation['term_images'][$term->slug] : '';
-            echo '<div class="productmaster-term-toggle-row">';
-            echo '<label class="productmaster-term-toggle">';
-            echo '<input type="checkbox" name="allowed_terms[]" value="' . esc_attr($term->slug) . '" ' . checked($selected, true, false) . ' />';
-            echo '<span>' . esc_html($term->name) . '</span>';
-            echo '</label>';
-            echo '<code class="productmaster-term-slug">' . esc_html($term->slug) . '</code>';
+        if (!$is_currently_selected_filter && !$is_reset_button_filter) {
+            echo '<tr><th><label for="pm_hierarchical_visual">' . esc_html__('Hierarchical', 'productmaster') . '</label></th><td><select id="pm_hierarchical_visual" name="hierarchical_visual"><option value="disabled" ' . selected('disabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Disabled', 'productmaster') . '</option><option value="enabled" ' . selected('enabled', $presentation['hierarchical_visual'], false) . '>' . esc_html__('Enabled', 'productmaster') . '</option></select></td></tr>';
+            echo '<tr><th><label for="pm_value_match">' . esc_html__('Value matching (within filter)', 'productmaster') . '</label></th><td><select id="pm_value_match" name="value_match"><option value="or" ' . selected('or', $presentation['value_match'], false) . '>' . esc_html__('OR (default)', 'productmaster') . '</option><option value="and" ' . selected('and', $presentation['value_match'], false) . '>' . esc_html__('AND', 'productmaster') . '</option></select><p class="description">' . esc_html__('This controls how multiple values inside this single filter are combined. Different filters are always combined with AND.', 'productmaster') . '</p></td></tr>';
+            echo '<tr><th><label for="pm_hierarchy_map_text">' . esc_html__('Manual Hierarchy Map', 'productmaster') . '</label></th><td><textarea id="pm_hierarchy_map_text" name="hierarchy_map_text" rows="6" class="large-text code">' . esc_textarea($presentation['hierarchy_map_text']) . '</textarea><p class="description">';
+            echo esc_html__('Use format: parent_slug:child_slug_1,child_slug_2 (one parent per line).', 'productmaster') . ' ';
+            if (!$has_parent_terms) {
+                echo esc_html__('No parent terms detected in this taxonomy. Use this map to define parent/child relationships.', 'productmaster');
+            } else {
+                echo esc_html__('When set, only mapped terms are shown and Included taxonomy terms are ignored.', 'productmaster');
+            }
+            echo '</p></td></tr>';
+            echo '<tr><th><label for="pm_checkbox_icon">' . esc_html__('Checkbox icon', 'productmaster') . '</label></th><td><input id="pm_checkbox_icon" name="checkbox_icon" type="text" value="' . esc_attr($presentation['checkbox_icon']) . '" /></td></tr>';
+            if (isset($filter['type']) && 'multi_filter' === $filter['type']) {
+                echo '<tr><th>' . esc_html__('Parent image size (px)', 'productmaster') . '</th><td><label for="pm_multi_parent_image_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_multi_parent_image_width" name="multi_parent_image_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_parent_image_width']) . '" /> <label for="pm_multi_parent_image_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_multi_parent_image_height" name="multi_parent_image_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_parent_image_height']) . '" /></td></tr>';
+                echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_multi_child_image_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_multi_child_image_width" name="multi_child_image_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_child_image_width']) . '" /> <label for="pm_multi_child_image_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_multi_child_image_height" name="multi_child_image_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['multi_child_image_height']) . '" /></td></tr>';
+            } else {
+                echo '<tr><th>' . esc_html__('Image box size (px)', 'productmaster') . '</th><td><label for="pm_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_image_box_width" name="image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_width']) . '" /> <label for="pm_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_image_box_height" name="image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['image_box_height']) . '" /></td></tr>';
+                echo '<tr><th>' . esc_html__('Child image size (px)', 'productmaster') . '</th><td><label for="pm_child_image_box_width">' . esc_html__('Width', 'productmaster') . '</label> <input id="pm_child_image_box_width" name="child_image_box_width" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_width']) . '" /> <label for="pm_child_image_box_height">' . esc_html__('Height', 'productmaster') . '</label> <input id="pm_child_image_box_height" name="child_image_box_height" type="number" min="16" max="240" value="' . esc_attr((string) $presentation['child_image_box_height']) . '" /></td></tr>';
+            }
+            echo '<tr><th><label for="pm_allowed_terms">' . esc_html__('Included taxonomy terms', 'productmaster') . '</label></th><td><div id="pm_allowed_terms" class="productmaster-term-toggle-textarea"><div class="productmaster-term-toggle-list">';
+            usort(
+                $taxonomy_terms,
+                function ($a, $b) use ($effective_allowed_terms) {
+                    $a_selected = in_array($a->slug, $effective_allowed_terms, true);
+                    $b_selected = in_array($b->slug, $effective_allowed_terms, true);
+                    if ($a_selected !== $b_selected) {
+                        return $a_selected ? -1 : 1;
+                    }
+
+                    return strcmp($a->name, $b->name);
+                }
+            );
+
+            $is_image_box_filter = isset($filter['type']) && 'image_boxes' === $filter['type'];
+            echo '<div class="productmaster-term-toggle-header">';
+            echo '<span>' . esc_html__('Value', 'productmaster') . '</span>';
+            echo '<span>' . esc_html__('Slug', 'productmaster') . '</span>';
             if ($is_image_box_filter) {
-                echo '<div class="productmaster-term-image-control">';
-                echo '<input type="hidden" class="productmaster-term-image-input" name="term_images[' . esc_attr($term->slug) . ']" value="' . esc_attr($term_image) . '" />';
-                echo '<button type="button" class="button button-small productmaster-select-image">' . esc_html__('Select image', 'productmaster') . '</button>';
-                echo '<span class="productmaster-image-selected-label">' . esc_html(!empty($term_image) ? __('Image selected', 'productmaster') : __('No image', 'productmaster')) . '</span>';
-                echo '</div>';
+                echo '<span>' . esc_html__('Image', 'productmaster') . '</span>';
             }
             echo '</div>';
+            foreach ($taxonomy_terms as $term) {
+                $selected = in_array($term->slug, $effective_allowed_terms, true);
+                $term_image = isset($presentation['term_images'][$term->slug]) ? $presentation['term_images'][$term->slug] : '';
+                echo '<div class="productmaster-term-toggle-row">';
+                echo '<label class="productmaster-term-toggle">';
+                echo '<input type="checkbox" name="allowed_terms[]" value="' . esc_attr($term->slug) . '" ' . checked($selected, true, false) . ' />';
+                echo '<span>' . esc_html($term->name) . '</span>';
+                echo '</label>';
+                echo '<code class="productmaster-term-slug">' . esc_html($term->slug) . '</code>';
+                if ($is_image_box_filter) {
+                    echo '<div class="productmaster-term-image-control">';
+                    echo '<input type="hidden" class="productmaster-term-image-input" name="term_images[' . esc_attr($term->slug) . ']" value="' . esc_attr($term_image) . '" />';
+                    echo '<button type="button" class="button button-small productmaster-select-image">' . esc_html__('Select image', 'productmaster') . '</button>';
+                    echo '<span class="productmaster-image-selected-label">' . esc_html(!empty($term_image) ? __('Image selected', 'productmaster') : __('No image', 'productmaster')) . '</span>';
+                    echo '</div>';
+                }
+                echo '</div>';
+            }
+            echo '</div></div><p class="description">' . esc_html__('Toggle terms on/off to control exactly which values are available for this filter. Leave all off to include all terms.', 'productmaster') . '</p></td></tr>';
         }
-        echo '</div></div><p class="description">' . esc_html__('Toggle terms on/off to control exactly which values are available for this filter. Leave all off to include all terms.', 'productmaster') . '</p></td></tr>';
         echo '<tr><th><label for="pm_custom_css">' . esc_html__('Custom CSS', 'productmaster') . '</label></th><td><textarea id="pm_custom_css" name="custom_css" rows="8" class="large-text code">' . esc_textarea($presentation['custom_css']) . '</textarea><p class="description">' . esc_html__('Use CSS declarations or full CSS. For full CSS selectors, use {{WRAPPER}} to target this filter instance.', 'productmaster') . '</p></td></tr>';
         echo '</tbody></table>';
         submit_button(__('Save Presentation', 'productmaster'));
@@ -1149,7 +1419,13 @@ class ProductMaster_Admin_Portal
             'image_box_height' => isset($data['image_box_height']) ? max(16, min(240, absint($data['image_box_height']))) : $defaults['image_box_height'],
             'child_image_box_width' => isset($data['child_image_box_width']) ? max(16, min(240, absint($data['child_image_box_width']))) : $defaults['child_image_box_width'],
             'child_image_box_height' => isset($data['child_image_box_height']) ? max(16, min(240, absint($data['child_image_box_height']))) : $defaults['child_image_box_height'],
+            'multi_parent_image_width' => isset($data['multi_parent_image_width']) ? max(16, min(240, absint($data['multi_parent_image_width']))) : $defaults['multi_parent_image_width'],
+            'multi_parent_image_height' => isset($data['multi_parent_image_height']) ? max(16, min(240, absint($data['multi_parent_image_height']))) : $defaults['multi_parent_image_height'],
+            'multi_child_image_width' => isset($data['multi_child_image_width']) ? max(16, min(240, absint($data['multi_child_image_width']))) : $defaults['multi_child_image_width'],
+            'multi_child_image_height' => isset($data['multi_child_image_height']) ? max(16, min(240, absint($data['multi_child_image_height']))) : $defaults['multi_child_image_height'],
             'allowed_terms' => $allowed_terms,
+            'selected_filter_ids' => isset($data['selected_filter_ids']) && is_array($data['selected_filter_ids']) ? array_values(array_unique(array_map('sanitize_key', wp_unslash($data['selected_filter_ids'])))) : $defaults['selected_filter_ids'],
+            'source_filter_images' => isset($data['source_filter_images']) && is_array($data['source_filter_images']) ? $this->sanitize_source_filter_images(wp_unslash($data['source_filter_images'])) : $defaults['source_filter_images'],
             'term_images' => isset($data['term_images']) && is_array($data['term_images']) ? $this->sanitize_term_images(wp_unslash($data['term_images'])) : $defaults['term_images'],
             'custom_css' => isset($data['custom_css']) ? wp_unslash($data['custom_css']) : $defaults['custom_css'],
         );
@@ -1173,7 +1449,13 @@ class ProductMaster_Admin_Portal
             'image_box_height' => 40,
             'child_image_box_width' => 54,
             'child_image_box_height' => 40,
+            'multi_parent_image_width' => 54,
+            'multi_parent_image_height' => 40,
+            'multi_child_image_width' => 40,
+            'multi_child_image_height' => 32,
             'allowed_terms' => array(),
+            'selected_filter_ids' => array(),
+            'source_filter_images' => array(),
             'term_images' => array(),
             'custom_css' => '',
         );
@@ -1280,19 +1562,22 @@ class ProductMaster_Admin_Portal
             $term_id = (int) $term->term_id;
             $term_checked = is_array($selected_value) && in_array($term->slug, $selected_value, true);
             $has_children = !empty($terms_by_parent[$term_id]);
+            if (!$term_checked && $has_children && $this->is_branch_fully_selected($terms_by_parent, $term_id, $selected_value)) {
+                $term_checked = true;
+            }
             $branch_has_selected_child = $this->branch_has_selected_value($terms_by_parent, $term_id, $selected_value);
             $open_attr = ($term_checked || $branch_has_selected_child) ? ' open' : '';
 
             echo '<div class="productmaster-hierarchical-parent">';
             if ($has_children) {
                 echo '<details class="productmaster-hierarchical-children"' . $open_attr . '>';
-                echo '<summary class="productmaster-hierarchical-summary"><span class="productmaster-hierarchical-marker" aria-hidden="true">▸</span><label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label></summary>';
+                echo '<summary class="productmaster-hierarchical-summary"><span class="productmaster-hierarchical-marker" aria-hidden="true">▸</span><label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label></summary>';
                 echo '<div class="productmaster-hierarchical-nested">';
                 $this->render_hierarchical_term_nodes($terms_by_parent, $term_id, $filter, $param_key, $selected_value, $presentation);
                 echo '</div>';
                 echo '</details>';
             } else {
-                echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
+                echo '<label class="' . esc_attr($class) . '"><span class="productmaster-checkbox-icon">' . esc_html($presentation['checkbox_icon']) . '</span> <input type="checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($term_checked, true, false) . ' /> ' . esc_html($term->name) . '</label>';
             }
             echo '</div>';
         }
@@ -1315,6 +1600,25 @@ class ProductMaster_Admin_Portal
         }
 
         return false;
+    }
+
+    private function is_branch_fully_selected($terms_by_parent, $parent_id, $selected_value)
+    {
+        if (!is_array($selected_value) || empty($terms_by_parent[$parent_id])) {
+            return false;
+        }
+
+        foreach ($terms_by_parent[$parent_id] as $child_term) {
+            if (!in_array($child_term->slug, $selected_value, true)) {
+                return false;
+            }
+
+            if (!$this->is_branch_fully_selected($terms_by_parent, (int) $child_term->term_id, $selected_value) && !empty($terms_by_parent[(int) $child_term->term_id])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function build_custom_css_output($filter_id, $custom_css)
@@ -1473,6 +1777,21 @@ class ProductMaster_Admin_Portal
         return $clean;
     }
 
+    private function sanitize_source_filter_images($source_filter_images)
+    {
+        $clean = array();
+        foreach ((array) $source_filter_images as $filter_id => $url) {
+            $clean_filter_id = sanitize_key((string) $filter_id);
+            $clean_url = esc_url_raw((string) $url);
+            if ('' === $clean_filter_id) {
+                continue;
+            }
+            $clean[$clean_filter_id] = $clean_url;
+        }
+
+        return $clean;
+    }
+
     private function resolve_term_image_url($term, $presentation)
     {
         if (!is_object($term) || empty($term->slug)) {
@@ -1481,20 +1800,89 @@ class ProductMaster_Admin_Portal
 
         $slug = (string) $term->slug;
         if (!empty($presentation['term_images'][$slug])) {
-            return esc_url((string) $presentation['term_images'][$slug]);
+            $term_image_url = (string) $presentation['term_images'][$slug];
+            if (!$this->is_local_media_file_missing($term_image_url)) {
+                return esc_url($term_image_url);
+            }
         }
 
-        $swatch_image = get_term_meta((int) $term->term_id, 'smart-swatches-framework--src', true);
-        if (is_string($swatch_image) && '' !== $swatch_image) {
-            return esc_url($swatch_image);
+        foreach ($this->get_swatch_image_meta_keys() as $meta_key) {
+            $swatch_image = get_term_meta((int) $term->term_id, $meta_key, true);
+            if ('' === $swatch_image || null === $swatch_image) {
+                continue;
+            }
+
+            $swatch_image_url = '';
+            if (is_numeric($swatch_image)) {
+                $swatch_image_url = wp_get_attachment_url((int) $swatch_image);
+            } elseif (is_array($swatch_image)) {
+                if (!empty($swatch_image['id']) && is_numeric($swatch_image['id'])) {
+                    $swatch_image_url = wp_get_attachment_url((int) $swatch_image['id']);
+                } elseif (!empty($swatch_image['image']) && is_string($swatch_image['image'])) {
+                    $swatch_image_url = $swatch_image['image'];
+                } elseif (!empty($swatch_image['url']) && is_string($swatch_image['url'])) {
+                    $swatch_image_url = $swatch_image['url'];
+                } elseif (!empty($swatch_image['src']) && is_string($swatch_image['src'])) {
+                    $swatch_image_url = $swatch_image['src'];
+                }
+            } elseif (is_string($swatch_image)) {
+                $swatch_image_url = $swatch_image;
+            }
+
+            if (!is_string($swatch_image_url) || '' === $swatch_image_url) {
+                continue;
+            }
+
+            if ($this->is_local_media_file_missing($swatch_image_url)) {
+                continue;
+            }
+
+            return esc_url($swatch_image_url);
         }
 
         return '';
     }
 
+    private function get_swatch_image_meta_keys()
+    {
+        $default_keys = array(
+            'smart-swatches-framework--src',
+            'smart_swatches_framework_src',
+            'swatch_image',
+            'swatch_image_id',
+            'product_attribute_image',
+            'product_attribute_image_id',
+            'thumbnail_id',
+        );
+
+        $keys = apply_filters('productmaster_swatch_image_meta_keys', $default_keys);
+        return is_array($keys) ? array_values(array_unique(array_filter($keys))) : $default_keys;
+    }
+
+    private function is_local_media_file_missing($url)
+    {
+        $url = trim((string) $url);
+        if ('' === $url) {
+            return true;
+        }
+
+        $parsed = wp_parse_url($url);
+        if (empty($parsed['host']) || empty($parsed['path'])) {
+            return false;
+        }
+
+        $site_url = wp_parse_url(home_url());
+        if (empty($site_url['host']) || $parsed['host'] !== $site_url['host']) {
+            return false;
+        }
+
+        $absolute_path = ABSPATH . ltrim($parsed['path'], '/');
+        return !file_exists($absolute_path);
+    }
+
     private function render_image_box_filter($filter, $terms, $param_key, $selected_value, $presentation)
     {
-        $selected_values = is_array($selected_value) ? $selected_value : array();
+        $selected_values = $this->normalize_filter_values($selected_value);
         $term_by_slug = array();
         foreach ($terms as $term) {
             $term_by_slug[$term->slug] = $term;
@@ -1512,11 +1900,16 @@ class ProductMaster_Admin_Portal
 
                 $parent_term = $term_by_slug[$parent_slug];
                 $parent_checked = in_array($parent_slug, $selected_values, true);
+                if (!$parent_checked && !empty($child_slugs)) {
+                    $child_slugs = array_values(array_filter((array) $child_slugs));
+                    $selected_child_slugs = array_intersect($child_slugs, $selected_values);
+                    $parent_checked = !empty($child_slugs) && count($selected_child_slugs) === count($child_slugs);
+                }
                 $parent_image = $this->resolve_term_image_url($parent_term, $presentation);
 
                 echo '<div class="productmaster-image-parent">';
                 echo '<label class="productmaster-image-parent-label">';
-                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
+                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($parent_slug) . '" ' . checked($parent_checked, true, false) . ' />';
                 if (!empty($parent_image)) {
                     echo '<img src="' . esc_url($parent_image) . '" alt="' . esc_attr($parent_term->name) . '" class="productmaster-image-thumb" />';
                 } else {
@@ -1533,10 +1926,10 @@ class ProductMaster_Admin_Portal
                             continue;
                         }
                         $child_term = $term_by_slug[$child_slug];
-                        $child_checked = in_array($child_slug, $selected_values, true);
+                        $child_checked = in_array($child_slug, $selected_values, true) || in_array($parent_slug, $selected_values, true);
                         $child_image = $this->resolve_term_image_url($child_term, $presentation);
                         echo '<label class="productmaster-image-child-label">';
-                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';
+                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($child_slug) . '" ' . checked($child_checked, true, false) . ' />';
                         echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
                         if (!empty($child_image)) {
                             echo '<img src="' . esc_url($child_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';
@@ -1559,7 +1952,7 @@ class ProductMaster_Admin_Portal
                 $checked = in_array($term->slug, $selected_values, true);
                 $image = $this->resolve_term_image_url($term, $presentation);
                 echo '<label class="productmaster-image-parent-label">';
-                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '[]" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
+                echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($term->slug) . '" ' . checked($checked, true, false) . ' />';
                 if (!empty($image)) {
                     echo '<img src="' . esc_url($image) . '" alt="' . esc_attr($term->name) . '" class="productmaster-image-thumb" />';
                 } else {
@@ -1570,5 +1963,145 @@ class ProductMaster_Admin_Portal
         }
 
         echo '</div>';
+    }
+
+    private function render_multi_filter_input($filter)
+    {
+        $param_key = 'pmf_' . $filter['id'];
+        $selected_pairs = $this->normalize_multi_filter_values(isset($_GET[$param_key]) ? wp_unslash($_GET[$param_key]) : null); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $selected_lookup = array_fill_keys($selected_pairs, true);
+        $source_ids = isset($filter['presentation']['selected_filter_ids']) ? (array) $filter['presentation']['selected_filter_ids'] : array();
+
+        $source_filters = array_values(
+            array_filter(
+                $this->get_saved_taxonomy_filters(),
+                function ($saved_filter) use ($filter, $source_ids) {
+                    if (empty($saved_filter['id']) || empty($saved_filter['taxonomy']) || empty($saved_filter['type'])) {
+                        return false;
+                    }
+                    if ($saved_filter['id'] === $filter['id'] || 'image_boxes' !== $saved_filter['type']) {
+                        return false;
+                    }
+
+                    return empty($source_ids) || in_array($saved_filter['id'], $source_ids, true);
+                }
+            )
+        );
+
+        if (empty($source_filters)) {
+            echo '<p>' . esc_html__('No source image filters configured.', 'productmaster') . '</p>';
+            return;
+        }
+
+        $multi_styles = '--pm-image-child-box-width:' . (int) $filter['presentation']['multi_parent_image_width'] . 'px;--pm-image-child-box-height:' . (int) $filter['presentation']['multi_parent_image_height'] . 'px;--pm-multi-child-box-width:' . (int) $filter['presentation']['multi_child_image_width'] . 'px;--pm-multi-child-box-height:' . (int) $filter['presentation']['multi_child_image_height'] . 'px;';
+        echo '<div class="productmaster-image-box-grid" style="' . esc_attr($multi_styles) . '">';
+        foreach ($source_filters as $source_filter) {
+            $terms = get_terms(array('taxonomy' => $source_filter['taxonomy'], 'hide_empty' => false));
+            if (is_wp_error($terms) || empty($terms)) {
+                continue;
+            }
+
+            $source_presentation = isset($source_filter['presentation']) && is_array($source_filter['presentation']) ? $source_filter['presentation'] : $this->get_default_presentation_settings();
+            $terms_by_slug = array();
+            foreach ($terms as $term) {
+                $terms_by_slug[$term->slug] = $term;
+            }
+
+            $parent_only_terms = array();
+            $manual_hierarchy = isset($source_presentation['hierarchy_map']) && is_array($source_presentation['hierarchy_map']) ? $source_presentation['hierarchy_map'] : array();
+            if (!empty($manual_hierarchy)) {
+                foreach (array_keys($manual_hierarchy) as $parent_slug) {
+                    if (isset($terms_by_slug[$parent_slug])) {
+                        $parent_only_terms[] = $terms_by_slug[$parent_slug];
+                    }
+                }
+            } else {
+                foreach ($terms as $term) {
+                    if ((int) $term->parent === 0) {
+                        $parent_only_terms[] = $term;
+                    }
+                }
+            }
+
+            if (empty($parent_only_terms)) {
+                $parent_only_terms = $terms;
+            }
+
+            echo '<div class="productmaster-image-parent">';
+            echo '<label class="productmaster-image-parent-label">';
+            $source_filter_image = isset($filter['presentation']['source_filter_images'][$source_filter['id']]) ? esc_url((string) $filter['presentation']['source_filter_images'][$source_filter['id']]) : '';
+            if (!empty($source_filter_image)) {
+                echo '<img src="' . esc_url($source_filter_image) . '" alt="' . esc_attr($source_filter['label']) . '" class="productmaster-image-thumb" />';
+            } else {
+                echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr((string) $source_filter['label'], 0, 1)) . '</span>';
+            }
+            echo '<span class="productmaster-image-child-tag">' . esc_html($source_filter['label']) . '</span>';
+            echo '</label>';
+
+            echo '<div class="productmaster-image-children-menu">';
+            echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($source_filter['id']) . '" /> ' . esc_html($source_filter['label']) . '</label>';
+            echo '<div class="productmaster-image-children-grid">';
+            foreach ($parent_only_terms as $term) {
+                $value = $source_filter['id'] . ':' . $term->slug;
+                $checked = isset($selected_lookup[$value]);
+                $term_image = $this->resolve_term_image_url($term, $source_presentation);
+                $child_slugs = isset($manual_hierarchy[$term->slug]) && is_array($manual_hierarchy[$term->slug]) ? $manual_hierarchy[$term->slug] : array();
+                echo '<label class="productmaster-image-child-label">';
+                echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($value) . '" ' . checked($checked, true, false) . ' />';
+                echo '<span class="productmaster-image-child-tag">' . esc_html($term->name) . '</span>';
+                if (!empty($term_image)) {
+                    echo '<img src="' . esc_url($term_image) . '" alt="' . esc_attr($term->name) . '" class="productmaster-image-thumb" />';
+                } else {
+                    echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($term->name, 0, 1)) . '</span>';
+                }
+                if (!empty($child_slugs)) {
+                    echo '<div class="productmaster-image-children-menu">';
+                    echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($value) . '" /> ' . esc_html($term->name) . '</label>';
+                    echo '<div class="productmaster-image-children-grid">';
+                    foreach ($child_slugs as $child_slug) {
+                        if (!isset($terms_by_slug[$child_slug])) {
+                            continue;
+                        }
+                        $child_term = $terms_by_slug[$child_slug];
+                        $child_value = $source_filter['id'] . ':' . $child_term->slug;
+                        $child_checked = isset($selected_lookup[$child_value]);
+                        $child_term_image = $this->resolve_term_image_url($child_term, $source_presentation);
+                        echo '<label class="productmaster-image-child-label productmaster-multi-second-level">';
+                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($child_value) . '" ' . checked($child_checked, true, false) . ' />';
+                        echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
+                        if (!empty($child_term_image)) {
+                            echo '<img src="' . esc_url($child_term_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';
+                        } else {
+                            echo '<span class="productmaster-image-thumb productmaster-image-fallback">' . esc_html(substr($child_term->name, 0, 1)) . '</span>';
+                        }
+                        echo '</label>';
+                    }
+                    echo '</div></div>';
+                }
+                echo '</label>';
+            }
+            echo '</div></div></div>';
+        }
+        echo '</div>';
+    }
+
+    private function expand_terms_by_manual_hierarchy($terms, $filter)
+    {
+        $expanded_terms = array_values(array_unique(array_map('sanitize_title', (array) $terms)));
+        if (empty($filter['presentation']['hierarchy_map']) || !is_array($filter['presentation']['hierarchy_map'])) {
+            return array_values(array_filter($expanded_terms));
+        }
+
+        foreach ($expanded_terms as $term_slug) {
+            if (empty($filter['presentation']['hierarchy_map'][$term_slug])) {
+                continue;
+            }
+
+            foreach ((array) $filter['presentation']['hierarchy_map'][$term_slug] as $child_slug) {
+                $expanded_terms[] = sanitize_title((string) $child_slug);
+            }
+        }
+
+        return array_values(array_unique(array_filter($expanded_terms)));
     }
 }

@@ -2613,8 +2613,8 @@ class ProductMaster_Admin_Portal
         $field_styles = isset($data['field_styles']) ? (array) wp_unslash($data['field_styles']) : array();
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
         $allowed_tags = array_keys($this->get_product_loop_tag_options());
-        $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
-        $field_order = array_values(array_intersect($allowed_fields, array_map('sanitize_key', (array) $field_order)));
+        $visible_fields = array_values(array_intersect($visible_fields, $allowed_fields));
+        $field_order = array_values(array_intersect(array_map('sanitize_key', (array) $field_order), $allowed_fields));
         $field_order = array_values(array_unique(array_merge($field_order, $allowed_fields)));
 
         $sanitized_tags = array();
@@ -2699,10 +2699,10 @@ class ProductMaster_Admin_Portal
     {
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories', 'color_variations');
         $visible = isset($loop['visible_fields']) && is_array($loop['visible_fields'])
-            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['visible_fields'])))
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['visible_fields']), $allowed_fields))
             : $allowed_fields;
         $order = isset($loop['field_order']) && is_array($loop['field_order'])
-            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['field_order'])))
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['field_order']), $allowed_fields))
             : $allowed_fields;
         $all_fields = array_values(array_unique(array_merge($order, $visible)));
         $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
@@ -2755,12 +2755,25 @@ class ProductMaster_Admin_Portal
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand" ' . $inline_style . '>' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
-            } elseif ('color_variations' === $field && !empty($color_variation_images)) {
+            } elseif ('color_variations' === $field && (!empty($color_variation_images) || $is_preview)) {
+                if (empty($color_variation_images) && $is_preview) {
+                    $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+                    if (!empty($fallback_image)) {
+                        $color_variation_images = array($fallback_image, $fallback_image, $fallback_image);
+                    }
+                }
+                if (empty($color_variation_images)) {
+                    continue;
+                }
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
+                echo '<div class="productmaster-loop-color-carousel" aria-label="' . esc_attr__('Color variations', 'productmaster') . '">';
+                echo '<button type="button" class="productmaster-loop-color-nav is-prev" aria-label="' . esc_attr__('Previous colors', 'productmaster') . '">‹</button>';
                 echo '<div class="productmaster-loop-color-slider">';
                 foreach ($color_variation_images as $variation_image) {
                     echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($variation_image) . '" alt="" data-variation-image="' . esc_url($variation_image) . '" />';
                 }
+                echo '</div>';
+                echo '<button type="button" class="productmaster-loop-color-nav is-next" aria-label="' . esc_attr__('Next colors', 'productmaster') . '">›</button>';
                 echo '</div></' . esc_attr($tag) . '>';
             }
         }
@@ -2775,13 +2788,33 @@ class ProductMaster_Admin_Portal
         }
 
         $images = array();
-        $variations = $product->get_available_variations();
-        foreach ($variations as $variation) {
-            $image_url = isset($variation['image']['thumbnail_src']) ? esc_url_raw((string) $variation['image']['thumbnail_src']) : '';
+        $variation_ids = $product->get_children();
+        foreach ($variation_ids as $variation_id) {
+            $variation_product = wc_get_product($variation_id);
+            if (!$variation_product) {
+                continue;
+            }
+
+            $variation_image_id = $variation_product->get_image_id();
+            if (empty($variation_image_id)) {
+                continue;
+            }
+
+            $image_url = wp_get_attachment_image_url($variation_image_id, 'woocommerce_thumbnail');
             if (empty($image_url)) {
                 continue;
             }
-            $images[] = $image_url;
+
+            $images[] = esc_url_raw($image_url);
+        }
+
+        if (empty($images)) {
+            $variations = $product->get_available_variations();
+            foreach ($variations as $variation) {
+                if (isset($variation['image']['thumbnail_src']) && !empty($variation['image']['thumbnail_src'])) {
+                    $images[] = esc_url_raw((string) $variation['image']['thumbnail_src']);
+                }
+            }
         }
         return array_values(array_unique($images));
     }
@@ -2798,14 +2831,14 @@ class ProductMaster_Admin_Portal
 
         if (array_key_exists('visible_fields', $loop) && is_array($loop['visible_fields'])) {
             $normalized['visible_fields'] = array_values(
-                array_intersect($allowed_fields, array_map('sanitize_key', $loop['visible_fields']))
+                array_intersect(array_map('sanitize_key', $loop['visible_fields']), $allowed_fields)
             );
         } else {
             $normalized['visible_fields'] = $defaults['visible_fields'];
         }
 
         $saved_order = isset($loop['field_order']) && is_array($loop['field_order'])
-            ? array_values(array_intersect($allowed_fields, array_map('sanitize_key', $loop['field_order'])))
+            ? array_values(array_intersect(array_map('sanitize_key', $loop['field_order']), $allowed_fields))
             : array();
         $normalized['field_order'] = array_values(array_unique(array_merge($saved_order, $defaults['field_order'])));
         $normalized['field_tags'] = array_merge($defaults['field_tags'], isset($loop['field_tags']) && is_array($loop['field_tags']) ? $loop['field_tags'] : array());

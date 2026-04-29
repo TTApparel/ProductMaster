@@ -1701,15 +1701,44 @@ class ProductMaster_Admin_Portal
             }
         }
 
-        $swatch_image = get_term_meta((int) $term->term_id, 'smart-swatches-framework--src', true);
-        if (is_string($swatch_image) && '' !== $swatch_image) {
-            if ($this->is_local_media_file_missing($swatch_image)) {
-                return '';
+        foreach ($this->get_swatch_image_meta_keys() as $meta_key) {
+            $swatch_image = get_term_meta((int) $term->term_id, $meta_key, true);
+            if ('' === $swatch_image || null === $swatch_image) {
+                continue;
             }
-            return esc_url($swatch_image);
+
+            $swatch_image_url = '';
+            if (is_numeric($swatch_image)) {
+                $swatch_image_url = wp_get_attachment_url((int) $swatch_image);
+            } elseif (is_string($swatch_image)) {
+                $swatch_image_url = $swatch_image;
+            }
+
+            if (!is_string($swatch_image_url) || '' === $swatch_image_url) {
+                continue;
+            }
+
+            if ($this->is_local_media_file_missing($swatch_image_url)) {
+                continue;
+            }
+
+            return esc_url($swatch_image_url);
         }
 
         return '';
+    }
+
+    private function get_swatch_image_meta_keys()
+    {
+        return array(
+            'smart-swatches-framework--src',
+            'smart_swatches_framework_src',
+            'swatch_image',
+            'swatch_image_id',
+            'product_attribute_image',
+            'product_attribute_image_id',
+            'thumbnail_id',
+        );
     }
 
     private function is_local_media_file_missing($url)

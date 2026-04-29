@@ -2687,7 +2687,16 @@ class ProductMaster_Admin_Portal
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand" ' . $inline_style . '>' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
-            } elseif ('color_variations' === $field && !empty($color_variation_images)) {
+            } elseif ('color_variations' === $field && (!empty($color_variation_images) || $is_preview)) {
+                if (empty($color_variation_images) && $is_preview) {
+                    $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+                    if (!empty($fallback_image)) {
+                        $color_variation_images = array($fallback_image, $fallback_image, $fallback_image);
+                    }
+                }
+                if (empty($color_variation_images)) {
+                    continue;
+                }
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
                 echo '<div class="productmaster-loop-color-slider">';
                 foreach ($color_variation_images as $variation_image) {
@@ -2709,11 +2718,23 @@ class ProductMaster_Admin_Portal
         $images = array();
         $variations = $product->get_available_variations();
         foreach ($variations as $variation) {
-            $image_url = isset($variation['image']['thumbnail_src']) ? esc_url_raw((string) $variation['image']['thumbnail_src']) : '';
+            $image_url = '';
+            if (isset($variation['variation_id'])) {
+                $variation_product = wc_get_product((int) $variation['variation_id']);
+                if ($variation_product) {
+                    $variation_image_id = $variation_product->get_image_id();
+                    if (!empty($variation_image_id)) {
+                        $image_url = wp_get_attachment_image_url($variation_image_id, 'woocommerce_thumbnail');
+                    }
+                }
+            }
+            if (empty($image_url) && isset($variation['image']['thumbnail_src'])) {
+                $image_url = (string) $variation['image']['thumbnail_src'];
+            }
             if (empty($image_url)) {
                 continue;
             }
-            $images[] = $image_url;
+            $images[] = esc_url_raw($image_url);
         }
         return array_values(array_unique($images));
     }

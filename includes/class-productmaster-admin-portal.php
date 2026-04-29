@@ -12,6 +12,7 @@ class ProductMaster_Admin_Portal
     const REVIEW_BUILDER_SLUG = 'productmaster-review-builder';
     const PER_PAGE = 20;
     const FILTER_OPTION_KEY = 'productmaster_taxonomy_filters';
+    const LOOP_OPTION_KEY = 'productmaster_product_loops';
 
     public function register_menu()
     {
@@ -177,14 +178,24 @@ class ProductMaster_Admin_Portal
         $taxonomy_options = $this->get_taxonomy_options();
         $editing_filter = $this->get_editing_filter($filters);
 
+        $active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'filters'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if (!in_array($active_tab, array('filters', 'product_loop'), true)) {
+            $active_tab = 'filters';
+        }
+
         echo '<div class="wrap productmaster-wrap">';
         echo '<h1>' . esc_html__('Taxonomy Filters', 'productmaster') . '</h1>';
         echo '<p>' . esc_html__('Create shortcode-driven product loop filters using existing product categories and attributes.', 'productmaster') . '</p>';
+        echo '<h2 class="nav-tab-wrapper">';
+        echo '<a href="' . esc_url(add_query_arg(array('page' => self::TAXONOMY_FILTERS_SLUG, 'tab' => 'filters'), admin_url('admin.php'))) . '" class="nav-tab ' . ('filters' === $active_tab ? 'nav-tab-active' : '') . '">' . esc_html__('Filters', 'productmaster') . '</a>';
+        echo '<a href="' . esc_url(add_query_arg(array('page' => self::TAXONOMY_FILTERS_SLUG, 'tab' => 'product_loop'), admin_url('admin.php'))) . '" class="nav-tab ' . ('product_loop' === $active_tab ? 'nav-tab-active' : '') . '">' . esc_html__('Product Loop', 'productmaster') . '</a>';
+        echo '</h2>';
 
         if (!empty($notice)) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($notice) . '</p></div>';
         }
 
+        if ('filters' === $active_tab) {
         echo '<section class="productmaster-card">';
         echo '<h2>' . esc_html__('Create New Filter', 'productmaster') . '</h2>';
         echo '<form method="post">';
@@ -246,6 +257,11 @@ class ProductMaster_Admin_Portal
 
         if (!empty($editing_filter)) {
             $this->render_filter_presentation_editor($editing_filter);
+        }
+        }
+
+        if ('product_loop' === $active_tab) {
+            $this->render_product_loop_builder_tab();
         }
         echo '</div>';
     }
@@ -890,6 +906,28 @@ class ProductMaster_Admin_Portal
             update_option(self::FILTER_OPTION_KEY, $filters, false);
             return __('Filter presentation updated.', 'productmaster');
         }
+
+        if ('add_product_loop' === $action) {
+            $loops = $this->get_saved_product_loops();
+            $settings = $this->sanitize_product_loop_settings($_POST); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            if (empty($settings['label'])) {
+                return __('Loop name is required.', 'productmaster');
+            }
+            $settings['id'] = sanitize_key(sanitize_title($settings['label']));
+            $loops[] = $settings;
+            update_option(self::LOOP_OPTION_KEY, $loops, false);
+            return __('Product loop saved.', 'productmaster');
+        }
+
+        if ('delete_product_loop' === $action) {
+            $loop_id = isset($_POST['loop_id']) ? sanitize_key(wp_unslash($_POST['loop_id'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            $loops = array_values(array_filter($this->get_saved_product_loops(), function ($loop) use ($loop_id) {
+                return empty($loop['id']) || $loop['id'] !== $loop_id;
+            }));
+            update_option(self::LOOP_OPTION_KEY, $loops, false);
+            return __('Product loop deleted.', 'productmaster');
+        }
+
 
         return '';
     }

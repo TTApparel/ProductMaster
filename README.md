@@ -57,6 +57,7 @@ Implemented:
 - Image-box size controls in the filter editor now show width/height on one line for parent tiles, with a dedicated child tile size row (default `54x40`) for child values.
 - Clicking a parent image tile now also toggles that parent’s child-menu master toggle and all mapped child values.
 - 2026-04-29: Product Loop now uses a single saved loop layout with one shortcode target, includes backend card preview with a sample product, and supports per-element visibility + ordering controls for image, title, price, description, shop button, brand names, and categories.
+- 2026-04-29: Product Loop builder now includes per-element HTML tag selectors (to inherit theme-default tag styling) and backend preview now respects configured column count by rendering multiple sample cards in the selected grid.
 
 ## Requirements
 

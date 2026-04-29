@@ -2352,7 +2352,7 @@ class ProductMaster_Admin_Portal
     private function render_product_loop_builder_tab()
     {
         $loop = $this->get_saved_product_loop();
-        $sample_product = $this->get_loop_preview_product();
+        $sample_products = $this->get_loop_preview_products($loop['columns']);
         $layout_fields = array(
             'image' => __('Product image', 'productmaster'),
             'title' => __('Product title', 'productmaster'),
@@ -2362,6 +2362,7 @@ class ProductMaster_Admin_Portal
             'brand' => __('Brand names', 'productmaster'),
             'categories' => __('Main categories', 'productmaster'),
         );
+        $tag_options = $this->get_product_loop_tag_options();
 
         echo '<section class="productmaster-card">';
         echo '<h2>' . esc_html__('Product Loop Builder', 'productmaster') . '</h2>';
@@ -2376,8 +2377,14 @@ class ProductMaster_Admin_Portal
         foreach ($layout_fields as $key => $label) {
             $visible = in_array($key, $loop['visible_fields'], true);
             $order = array_search($key, $loop['field_order'], true);
+            $current_tag = isset($loop['field_tags'][$key]) ? $loop['field_tags'][$key] : 'div';
             echo '<p><label><input type="checkbox" name="visible_fields[]" value="' . esc_attr($key) . '" ' . checked($visible, true, false) . ' /> ' . esc_html($label) . '</label> ';
-            echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="7" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label></p>';
+            echo '<label>' . esc_html__('Order', 'productmaster') . ' <input type="number" min="1" max="7" name="field_order[' . esc_attr($key) . ']" value="' . esc_attr((string) (false === $order ? 99 : ($order + 1))) . '" /></label> ';
+            echo '<label>' . esc_html__('HTML tag', 'productmaster') . ' <select name="field_tags[' . esc_attr($key) . ']">';
+            foreach ($tag_options as $tag => $tag_label) {
+                echo '<option value="' . esc_attr($tag) . '" ' . selected($current_tag, $tag, false) . '>' . esc_html($tag_label) . '</option>';
+            }
+            echo '</select></label></p>';
         }
         echo '</fieldset></td></tr>';
         echo '</tbody></table>';
@@ -2387,11 +2394,13 @@ class ProductMaster_Admin_Portal
 
         echo '<section class="productmaster-card">';
         echo '<h2>' . esc_html__('Backend Card Preview', 'productmaster') . '</h2>';
-        if (!$sample_product) {
+        if (empty($sample_products)) {
             echo '<p>' . esc_html__('Add at least one published product to preview the card layout.', 'productmaster') . '</p>';
         } else {
-            echo '<div class="productmaster-loop-preview">';
-            echo $this->render_product_loop_card_markup($sample_product, $loop, true);
+            echo '<div class="productmaster-loop-preview" style="--pm-loop-columns:' . esc_attr((string) $loop['columns']) . ';">';
+            foreach ($sample_products as $sample_product) {
+                echo $this->render_product_loop_card_markup($sample_product, $loop, true);
+            }
             echo '</div>';
         }
         echo '</section>';
@@ -2414,7 +2423,9 @@ class ProductMaster_Admin_Portal
         $shortcode = isset($data['shortcode']) ? sanitize_text_field(wp_unslash($data['shortcode'])) : '';
         $visible_fields = isset($data['visible_fields']) ? array_values(array_map('sanitize_key', (array) wp_unslash($data['visible_fields']))) : array();
         $field_order = isset($data['field_order']) ? (array) wp_unslash($data['field_order']) : array();
+        $field_tags = isset($data['field_tags']) ? (array) wp_unslash($data['field_tags']) : array();
         $allowed_fields = array('image', 'title', 'price', 'description', 'button', 'brand', 'categories');
+        $allowed_tags = array_keys($this->get_product_loop_tag_options());
         $visible_fields = array_values(array_intersect($allowed_fields, $visible_fields));
         $sort_map = array();
         foreach ($allowed_fields as $field_key) {
@@ -2424,12 +2435,19 @@ class ProductMaster_Admin_Portal
             return $a <=> $b;
         });
 
+        $sanitized_tags = array();
+        foreach ($allowed_fields as $field_key) {
+            $field_tag = isset($field_tags[$field_key]) ? sanitize_key($field_tags[$field_key]) : '';
+            $sanitized_tags[$field_key] = in_array($field_tag, $allowed_tags, true) ? $field_tag : 'div';
+        }
+
         return array(
             'columns' => max(1, min(6, $columns)),
             'limit' => max(1, min(60, $limit)),
             'shortcode' => empty($shortcode) ? '[productmaster_product_loop]' : $shortcode,
             'visible_fields' => $visible_fields,
             'field_order' => array_keys($sort_map),
+            'field_tags' => $sanitized_tags,
         );
     }
 
@@ -2441,13 +2459,37 @@ class ProductMaster_Admin_Portal
             'shortcode' => '[productmaster_product_loop]',
             'visible_fields' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
             'field_order' => array('image', 'title', 'price', 'description', 'button', 'brand', 'categories'),
+            'field_tags' => array(
+                'image' => 'div',
+                'title' => 'h3',
+                'price' => 'p',
+                'description' => 'p',
+                'button' => 'div',
+                'brand' => 'p',
+                'categories' => 'p',
+            ),
         );
     }
 
-    private function get_loop_preview_product()
+    private function get_product_loop_tag_options()
     {
-        $products = wc_get_products(array('limit' => 1, 'status' => 'publish'));
-        return !empty($products) ? $products[0] : null;
+        return array(
+            'div' => 'div',
+            'p' => 'p',
+            'span' => 'span',
+            'h2' => 'h2',
+            'h3' => 'h3',
+            'h4' => 'h4',
+            'section' => 'section',
+            'article' => 'article',
+        );
+    }
+
+    private function get_loop_preview_products($limit)
+    {
+        $preview_limit = max(1, min(6, absint($limit)));
+        $products = wc_get_products(array('limit' => $preview_limit, 'status' => 'publish'));
+        return is_array($products) ? $products : array();
     }
 
     private function render_product_loop_card_markup($product, $loop, $is_preview)
@@ -2455,6 +2497,7 @@ class ProductMaster_Admin_Portal
         $visible = isset($loop['visible_fields']) ? (array) $loop['visible_fields'] : array();
         $order = isset($loop['field_order']) ? (array) $loop['field_order'] : array();
         $all_fields = array_unique(array_merge($order, array('image', 'title', 'price', 'description', 'button', 'brand', 'categories')));
+        $field_tags = isset($loop['field_tags']) ? (array) $loop['field_tags'] : array();
         $brand_names = wp_get_post_terms($product->get_id(), 'product_brand', array('fields' => 'names'));
         $categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'names'));
         $description = wp_strip_all_tags($product->get_short_description());
@@ -2468,20 +2511,24 @@ class ProductMaster_Admin_Portal
             if (!in_array($field, $visible, true)) {
                 continue;
             }
+            $tag = isset($field_tags[$field]) ? sanitize_key((string) $field_tags[$field]) : 'div';
+            if (!in_array($tag, array_keys($this->get_product_loop_tag_options()), true)) {
+                $tag = 'div';
+            }
             if ('image' === $field) {
-                echo '<div class="productmaster-loop-field productmaster-loop-image"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $product->get_image('woocommerce_thumbnail') . '</a></div>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-image"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . $product->get_image('woocommerce_thumbnail') . '</a></' . esc_attr($tag) . '>';
             } elseif ('title' === $field) {
-                echo '<h3 class="productmaster-loop-field productmaster-loop-title"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></h3>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-title"><a href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html($product->get_name()) . '</a></' . esc_attr($tag) . '>';
             } elseif ('price' === $field) {
-                echo '<div class="productmaster-loop-field productmaster-loop-price">' . wp_kses_post($product->get_price_html()) . '</div>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-price">' . wp_kses_post($product->get_price_html()) . '</' . esc_attr($tag) . '>';
             } elseif ('description' === $field && !empty($description)) {
-                echo '<p class="productmaster-loop-field productmaster-loop-description">' . esc_html($description) . '</p>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-description">' . esc_html($description) . '</' . esc_attr($tag) . '>';
             } elseif ('button' === $field) {
-                echo '<div class="productmaster-loop-field productmaster-loop-button"><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></div>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-button"><a class="button" href="' . esc_url(get_permalink($product->get_id())) . '">' . esc_html__('Shop now', 'productmaster') . '</a></' . esc_attr($tag) . '>';
             } elseif ('brand' === $field && !empty($brand_names) && !is_wp_error($brand_names)) {
-                echo '<div class="productmaster-loop-field productmaster-loop-brand"><strong>' . esc_html__('Brand:', 'productmaster') . '</strong> ' . esc_html(implode(', ', $brand_names)) . '</div>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-brand"><strong>' . esc_html__('Brand:', 'productmaster') . '</strong> ' . esc_html(implode(', ', $brand_names)) . '</' . esc_attr($tag) . '>';
             } elseif ('categories' === $field && !empty($categories) && !is_wp_error($categories)) {
-                echo '<div class="productmaster-loop-field productmaster-loop-categories"><strong>' . esc_html__('Categories:', 'productmaster') . '</strong> ' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</div>';
+                echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories"><strong>' . esc_html__('Categories:', 'productmaster') . '</strong> ' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
             }
         }
         echo '</article>';

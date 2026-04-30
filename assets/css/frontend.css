@@ -113,6 +113,10 @@
     box-sizing: border-box;
 }
 
+.productmaster-multi-parent-item > .productmaster-image-children-menu {
+    top: calc(100% - 10px);
+}
+
 .productmaster-image-children-header {
     display: flex;
     align-items: center;
@@ -192,7 +196,8 @@
     gap: 6px;
 }
 
-.productmaster-image-child-label:hover > .productmaster-image-children-menu {
+.productmaster-multi-parent-item:hover .productmaster-image-children-menu,
+.productmaster-multi-parent-item:focus-within .productmaster-image-children-menu {
     display: grid;
     gap: 6px;
 }

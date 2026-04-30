@@ -302,5 +302,22 @@
                 });
             });
         });
+
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('.productmaster-loop-color-nav');
+            if (!button) {
+                return;
+            }
+            var carousel = button.closest('.productmaster-loop-color-carousel');
+            if (!carousel) {
+                return;
+            }
+            var slider = carousel.querySelector('.productmaster-loop-color-slider');
+            if (!slider) {
+                return;
+            }
+            var direction = button.classList.contains('is-prev') ? -1 : 1;
+            slider.scrollLeft += direction * 40;
+        });
     });
 })();

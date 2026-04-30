@@ -273,4 +273,21 @@
     border: 1px solid #dcdcde;
     border-radius: 2px;
     cursor: pointer;
+    position: relative;
+}
+
+.productmaster-loop-color-swatch[data-color-name]:hover::before {
+    content: attr(data-color-name);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    color: #fff;
+    font-size: 10px;
+    line-height: 1.2;
+    padding: 2px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 3;
 }

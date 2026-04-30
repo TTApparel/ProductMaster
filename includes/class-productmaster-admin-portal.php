@@ -2759,7 +2759,12 @@ class ProductMaster_Admin_Portal
                 if (empty($color_variation_images) && ($is_preview || $product->is_type('variable'))) {
                     $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
                     if (!empty($fallback_image)) {
-                        $color_variation_images = array($fallback_image);
+                        $color_variation_images = array(
+                            array(
+                                'image' => $fallback_image,
+                                'name' => __('Default color', 'productmaster'),
+                            ),
+                        );
                     }
                 }
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
@@ -2767,7 +2772,12 @@ class ProductMaster_Admin_Portal
                 echo '<button type="button" class="productmaster-loop-color-nav is-prev" aria-label="' . esc_attr__('Previous colors', 'productmaster') . '">‹</button>';
                 echo '<div class="productmaster-loop-color-slider">';
                 foreach ($color_variation_images as $variation_image) {
-                    echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($variation_image) . '" alt="" data-variation-image="' . esc_url($variation_image) . '" />';
+                    $image_url = isset($variation_image['image']) ? (string) $variation_image['image'] : '';
+                    $color_name = isset($variation_image['name']) ? (string) $variation_image['name'] : '';
+                    if (empty($image_url)) {
+                        continue;
+                    }
+                    echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($image_url) . '" alt="' . esc_attr($color_name) . '" title="' . esc_attr($color_name) . '" data-color-name="' . esc_attr($color_name) . '" data-variation-image="' . esc_url($image_url) . '" />';
                 }
                 echo '</div>';
                 echo '<button type="button" class="productmaster-loop-color-nav is-next" aria-label="' . esc_attr__('Next colors', 'productmaster') . '">›</button>';
@@ -2802,18 +2812,49 @@ class ProductMaster_Admin_Portal
                 continue;
             }
 
-            $images[] = esc_url_raw($image_url);
+            $attributes = $variation_product->get_attributes();
+            $color_name = '';
+            foreach ((array) $attributes as $attribute_key => $attribute_value) {
+                if (false === strpos((string) $attribute_key, 'color')) {
+                    continue;
+                }
+                $color_name = wc_attribute_label((string) $attribute_key) . ': ' . wc_clean((string) $attribute_value);
+                break;
+            }
+
+            $images[] = array(
+                'image' => esc_url_raw($image_url),
+                'name' => $color_name,
+            );
         }
 
         if (empty($images)) {
             $variations = $product->get_available_variations();
             foreach ($variations as $variation) {
                 if (isset($variation['image']['thumbnail_src']) && !empty($variation['image']['thumbnail_src'])) {
-                    $images[] = esc_url_raw((string) $variation['image']['thumbnail_src']);
+                    $color_name = '';
+                    if (isset($variation['attributes']) && is_array($variation['attributes'])) {
+                        foreach ($variation['attributes'] as $attribute_key => $attribute_value) {
+                            if (false === strpos((string) $attribute_key, 'color')) {
+                                continue;
+                            }
+                            $color_name = wc_attribute_label((string) $attribute_key) . ': ' . wc_clean((string) $attribute_value);
+                            break;
+                        }
+                    }
+                    $images[] = array(
+                        'image' => esc_url_raw((string) $variation['image']['thumbnail_src']),
+                        'name' => $color_name,
+                    );
                 }
             }
         }
-        return array_values(array_unique($images));
+        $unique = array();
+        foreach ($images as $entry) {
+            $key = (isset($entry['image']) ? $entry['image'] : '') . '|' . (isset($entry['name']) ? $entry['name'] : '');
+            $unique[$key] = $entry;
+        }
+        return array_values($unique);
     }
 
     private function normalize_product_loop_settings($loop)

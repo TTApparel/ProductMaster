@@ -2718,7 +2718,7 @@ class ProductMaster_Admin_Portal
         ob_start();
         echo '<article class="productmaster-loop-card' . ($is_preview ? ' is-preview' : '') . '">';
         foreach ($all_fields as $field) {
-            if (!in_array($field, $visible, true)) {
+            if ('color_variations' !== $field && !in_array($field, $visible, true)) {
                 continue;
             }
             $tag = isset($field_tags[$field]) ? sanitize_key((string) $field_tags[$field]) : 'div';
@@ -2761,9 +2761,6 @@ class ProductMaster_Admin_Portal
                     if (!empty($fallback_image)) {
                         $color_variation_images = array($fallback_image);
                     }
-                }
-                if (empty($color_variation_images)) {
-                    continue;
                 }
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-color-variations" ' . $inline_style . '>';
                 echo '<div class="productmaster-loop-color-carousel" aria-label="' . esc_attr__('Color variations', 'productmaster') . '">';

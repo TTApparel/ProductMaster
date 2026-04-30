@@ -192,7 +192,8 @@
     gap: 6px;
 }
 
-.productmaster-image-child-label:hover > .productmaster-image-children-menu {
+.productmaster-multi-parent-item:hover .productmaster-image-children-menu,
+.productmaster-multi-parent-item:focus-within .productmaster-image-children-menu {
     display: grid;
     gap: 6px;
 }

@@ -2794,67 +2794,75 @@ class ProductMaster_Admin_Portal
             return array();
         }
 
-        $images = array();
+        $color_values = array();
+        $attributes = $product->get_attributes();
+        foreach ($attributes as $attribute_key => $attribute) {
+            $attribute_name = $attribute instanceof WC_Product_Attribute ? $attribute->get_name() : (string) $attribute_key;
+            if (false === strpos(strtolower((string) $attribute_name), 'color')) {
+                continue;
+            }
+
+            if ($attribute instanceof WC_Product_Attribute) {
+                if ($attribute->is_taxonomy()) {
+                    $terms = wc_get_product_terms($product->get_id(), $attribute->get_name(), array('fields' => 'all'));
+                    foreach ($terms as $term) {
+                        if (!empty($term->slug)) {
+                            $color_values[$term->slug] = $term->name;
+                        }
+                    }
+                } else {
+                    foreach ($attribute->get_options() as $option) {
+                        $option_value = wc_clean((string) $option);
+                        if ($option_value !== '') {
+                            $color_values[sanitize_title($option_value)] = $option_value;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (empty($color_values)) {
+            return array();
+        }
+
         $variation_ids = $product->get_children();
+        $variation_images = array();
         foreach ($variation_ids as $variation_id) {
             $variation_product = wc_get_product($variation_id);
             if (!$variation_product) {
                 continue;
             }
 
-            $variation_image_id = $variation_product->get_image_id();
-            if (empty($variation_image_id)) {
-                continue;
-            }
-
-            $image_url = wp_get_attachment_image_url($variation_image_id, 'woocommerce_thumbnail');
+            $image_id = $variation_product->get_image_id();
+            $image_url = !empty($image_id) ? wp_get_attachment_image_url($image_id, 'woocommerce_thumbnail') : '';
             if (empty($image_url)) {
                 continue;
             }
 
-            $attributes = $variation_product->get_attributes();
-            $color_name = '';
-            foreach ((array) $attributes as $attribute_key => $attribute_value) {
-                if (false === strpos((string) $attribute_key, 'color')) {
+            foreach ((array) $variation_product->get_attributes() as $variation_attr_key => $variation_attr_value) {
+                if (false === strpos(strtolower((string) $variation_attr_key), 'color')) {
                     continue;
                 }
-                $color_name = wc_attribute_label((string) $attribute_key) . ': ' . wc_clean((string) $attribute_value);
-                break;
-            }
-
-            $images[] = array(
-                'image' => esc_url_raw($image_url),
-                'name' => $color_name,
-            );
-        }
-
-        if (empty($images)) {
-            $variations = $product->get_available_variations();
-            foreach ($variations as $variation) {
-                if (isset($variation['image']['thumbnail_src']) && !empty($variation['image']['thumbnail_src'])) {
-                    $color_name = '';
-                    if (isset($variation['attributes']) && is_array($variation['attributes'])) {
-                        foreach ($variation['attributes'] as $attribute_key => $attribute_value) {
-                            if (false === strpos((string) $attribute_key, 'color')) {
-                                continue;
-                            }
-                            $color_name = wc_attribute_label((string) $attribute_key) . ': ' . wc_clean((string) $attribute_value);
-                            break;
-                        }
-                    }
-                    $images[] = array(
-                        'image' => esc_url_raw((string) $variation['image']['thumbnail_src']),
-                        'name' => $color_name,
-                    );
+                $slug = sanitize_title((string) $variation_attr_value);
+                if ($slug !== '') {
+                    $variation_images[$slug] = esc_url_raw($image_url);
                 }
             }
         }
-        $unique = array();
-        foreach ($images as $entry) {
-            $key = (isset($entry['image']) ? $entry['image'] : '') . '|' . (isset($entry['name']) ? $entry['name'] : '');
-            $unique[$key] = $entry;
+
+        $results = array();
+        $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+        foreach ($color_values as $color_slug => $color_label) {
+            $image_url = isset($variation_images[$color_slug]) ? $variation_images[$color_slug] : $fallback_image;
+            if (empty($image_url)) {
+                continue;
+            }
+            $results[] = array(
+                'image' => esc_url_raw($image_url),
+                'name' => $color_label,
+            );
         }
-        return array_values($unique);
+        return $results;
     }
 
     private function normalize_product_loop_settings($loop)

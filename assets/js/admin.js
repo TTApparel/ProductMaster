@@ -11,7 +11,7 @@
             }
 
             var gridLeft = $grid.offset().left;
-            $grid.find('.productmaster-image-children-menu').each(function () {
+            $grid.find('> .productmaster-image-parent > .productmaster-image-children-menu').each(function () {
                 var $menu = $(this);
                 var $parent = $menu.closest('.productmaster-image-parent');
                 var parentLeft = $parent.length ? $parent.offset().left : gridLeft;
@@ -21,7 +21,26 @@
                     width: width + 'px',
                     left: '-' + leftOffset + 'px'
                 });
+
+                $menu.find('> .productmaster-image-children-grid > .productmaster-multi-parent-item > .productmaster-image-children-menu').each(function () {
+                    var $nestedMenu = $(this);
+                    var $item = $nestedMenu.closest('.productmaster-multi-parent-item');
+                    var itemOffset = $item.length ? $item.position().left : 0;
+
+                    $nestedMenu.css({
+                        width: width + 'px',
+                        left: '-' + itemOffset + 'px'
+                    });
+                });
             });
+        });
+    }
+
+    function syncMultiParentVisualState() {
+        $('.productmaster-multi-parent-item').each(function () {
+            var $item = $(this);
+            var checked = $item.find('> .productmaster-image-child-label > .productmaster-image-child-checkbox').prop('checked');
+            $item.toggleClass('productmaster-parent-selected', !!checked);
         });
     }
 
@@ -97,7 +116,12 @@
 
     $(function () {
         syncImageChildrenMenuWidths();
-        $(window).on('resize', syncImageChildrenMenuWidths);
+        syncMultiParentVisualState();
+        $(window).on('resize', function () {
+            syncImageChildrenMenuWidths();
+            syncMultiParentVisualState();
+        });
+        $(document).on('change', '.productmaster-filters-form .productmaster-image-child-checkbox, .productmaster-filters-form .productmaster-image-children-toggle', syncMultiParentVisualState);
 
         $('.productmaster-loop-card').each(function () {
             var $card = $(this);

@@ -130,13 +130,30 @@
                 return;
             }
             var defaultSrc = $mainImage.attr('src');
+            var lockedWidth = $mainImage.attr('width');
+            var lockedHeight = $mainImage.attr('height');
+            var lockedStyle = $mainImage.attr('style') || '';
             $card.find('.productmaster-loop-color-swatch[data-variation-image]').on('mouseenter', function () {
                 var targetSrc = $(this).attr('data-variation-image');
                 if (targetSrc) {
                     $mainImage.attr('src', targetSrc);
+                    if (lockedWidth) {
+                        $mainImage.attr('width', lockedWidth);
+                    }
+                    if (lockedHeight) {
+                        $mainImage.attr('height', lockedHeight);
+                    }
+                    $mainImage.attr('style', lockedStyle);
                 }
             }).on('mouseleave', function () {
                 $mainImage.attr('src', defaultSrc);
+                if (lockedWidth) {
+                    $mainImage.attr('width', lockedWidth);
+                }
+                if (lockedHeight) {
+                    $mainImage.attr('height', lockedHeight);
+                }
+                $mainImage.attr('style', lockedStyle);
             });
         });
 

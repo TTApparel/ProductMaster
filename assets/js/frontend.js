@@ -333,16 +333,33 @@
                 return;
             }
             var defaultSrc = mainImage.getAttribute('src');
+            var lockedWidth = mainImage.getAttribute('width');
+            var lockedHeight = mainImage.getAttribute('height');
+            var lockedStyle = mainImage.getAttribute('style') || '';
             var swatches = card.querySelectorAll('.productmaster-loop-color-swatch[data-variation-image]');
             swatches.forEach(function (swatch) {
                 swatch.addEventListener('mouseenter', function () {
                     var targetSrc = swatch.getAttribute('data-variation-image');
                     if (targetSrc) {
                         mainImage.setAttribute('src', targetSrc);
+                        if (lockedWidth) {
+                            mainImage.setAttribute('width', lockedWidth);
+                        }
+                        if (lockedHeight) {
+                            mainImage.setAttribute('height', lockedHeight);
+                        }
+                        mainImage.setAttribute('style', lockedStyle);
                     }
                 });
                 swatch.addEventListener('mouseleave', function () {
                     mainImage.setAttribute('src', defaultSrc);
+                    if (lockedWidth) {
+                        mainImage.setAttribute('width', lockedWidth);
+                    }
+                    if (lockedHeight) {
+                        mainImage.setAttribute('height', lockedHeight);
+                    }
+                    mainImage.setAttribute('style', lockedStyle);
                 });
             });
         });

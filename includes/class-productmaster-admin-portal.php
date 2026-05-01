@@ -1463,7 +1463,12 @@ class ProductMaster_Admin_Portal
         foreach ((array) $selected_values as $selected_value) {
             $selected_value = sanitize_text_field((string) $selected_value);
             if (false === strpos($selected_value, ':')) {
-                $translated[] = $selected_value;
+                $selected_source_id = sanitize_key($selected_value);
+                if (!empty($filters_by_id[$selected_source_id]['label'])) {
+                    $translated[] = (string) $filters_by_id[$selected_source_id]['label'];
+                } else {
+                    $translated[] = $selected_value;
+                }
                 continue;
             }
 

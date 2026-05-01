@@ -2761,7 +2761,9 @@ class ProductMaster_Admin_Portal
             } elseif ('color_variations' === $field) {
                 if (empty($color_variation_images) && ($is_preview || $product->is_type('variable'))) {
                     $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
-                    if (!empty($fallback_image)) {
+                    if (!empty($fallback_image) && $is_preview) {
+                        $color_variation_images = $this->get_preview_random_color_variation_images($fallback_image);
+                    } elseif (!empty($fallback_image)) {
                         $color_variation_images = array(
                             array(
                                 'image' => $fallback_image,
@@ -2789,6 +2791,33 @@ class ProductMaster_Admin_Portal
         }
         echo '</article>';
         return (string) ob_get_clean();
+    }
+
+
+    private function get_preview_random_color_variation_images($fallback_image)
+    {
+        $color_names = array(
+            __('Crimson', 'productmaster'),
+            __('Cobalt', 'productmaster'),
+            __('Emerald', 'productmaster'),
+            __('Amber', 'productmaster'),
+            __('Violet', 'productmaster'),
+            __('Slate', 'productmaster'),
+            __('Coral', 'productmaster'),
+            __('Ivory', 'productmaster'),
+        );
+
+        shuffle($color_names);
+
+        $preview_colors = array();
+        foreach ($color_names as $color_name) {
+            $preview_colors[] = array(
+                'image' => $fallback_image,
+                'name' => $color_name,
+            );
+        }
+
+        return $preview_colors;
     }
 
     private function get_product_color_variation_images($product)

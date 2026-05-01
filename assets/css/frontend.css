@@ -275,11 +275,17 @@
     padding: 0;
 }
 
+.productmaster-loop-color-swatch-box {
+    position: relative;
+    display: inline-flex;
+}
+
 .productmaster-loop-color-swatch {
-    width: 10px;
-    height: 10px;
-    min-width: 10px;
-    min-height: 10px;
+
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
     object-fit: cover;
     border: 1px solid #dcdcde;
     border-radius: 2px;
@@ -287,7 +293,7 @@
     position: relative;
 }
 
-.productmaster-loop-color-swatch[data-color-name]:hover::before {
+.productmaster-loop-color-swatch-box[data-color-name]:hover::before {
     content: attr(data-color-name);
     position: absolute;
     bottom: calc(100% + 4px);

@@ -2783,7 +2783,7 @@ class ProductMaster_Admin_Portal
                     if (empty($image_url)) {
                         continue;
                     }
-                    echo '<img class="productmaster-loop-color-swatch" src="' . esc_url($image_url) . '" alt="' . esc_attr($color_name) . '" title="' . esc_attr($color_name) . '" data-color-name="' . esc_attr($color_name) . '" data-variation-image="' . esc_url($image_url) . '" />';
+                    echo '<span class="productmaster-loop-color-swatch-box" data-color-name="' . esc_attr($color_name) . '"><img class="productmaster-loop-color-swatch" src="' . esc_url($image_url) . '" alt="' . esc_attr($color_name) . '" title="' . esc_attr($color_name) . '" data-color-name="' . esc_attr($color_name) . '" data-variation-image="' . esc_url($image_url) . '" /></span>';
                 }
                 echo '</div>';
                 echo '<button type="button" class="productmaster-loop-color-nav is-next" aria-label="' . esc_attr__('Next colors', 'productmaster') . '">›</button>';

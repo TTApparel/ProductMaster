@@ -2402,7 +2402,8 @@ class ProductMaster_Admin_Portal
             echo '<div class="productmaster-image-children-grid">';
             foreach ($parent_only_terms as $term) {
                 $value = $source_filter['id'] . ':' . self::MULTI_FILTER_PARENT_TOKEN_PREFIX . $term->slug;
-                $checked = isset($selected_lookup[$value]);
+                $source_selected = isset($selected_lookup[$source_filter['id']]);
+                $checked = isset($selected_lookup[$value]) || $source_selected;
                 $term_image = $this->resolve_term_image_url($term, $source_presentation);
                 $child_slugs = isset($manual_hierarchy[$term->slug]) && is_array($manual_hierarchy[$term->slug]) ? $manual_hierarchy[$term->slug] : array();
                 if (empty($child_slugs)) {
@@ -2439,7 +2440,8 @@ class ProductMaster_Admin_Portal
                         $child_term = $terms_by_slug[$child_slug];
                         $child_term_image = $this->resolve_term_image_url($child_term, $source_presentation);
                         echo '<label class="productmaster-image-child-label productmaster-multi-second-level">';
-                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($source_filter['id'] . ':' . $child_term->slug) . '" ' . checked(isset($selected_lookup[$source_filter['id'] . ':' . $child_term->slug]), true, false) . ' />';
+                        $child_checked = isset($selected_lookup[$source_filter['id'] . ':' . $child_term->slug]) || $source_selected;
+                        echo '<input type="checkbox" class="productmaster-image-child-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($source_filter['id'] . ':' . $child_term->slug) . '" ' . checked($child_checked, true, false) . ' />';
                         echo '<span class="productmaster-image-child-tag">' . esc_html($child_term->name) . '</span>';
                         if (!empty($child_term_image)) {
                             echo '<img src="' . esc_url($child_term_image) . '" alt="' . esc_attr($child_term->name) . '" class="productmaster-image-thumb" />';

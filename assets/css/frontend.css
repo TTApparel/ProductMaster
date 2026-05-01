@@ -168,6 +168,12 @@
     box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.15);
 }
 
+
+.productmaster-multi-parent-item.productmaster-parent-selected > .productmaster-image-children-menu .productmaster-image-thumb {
+    border: 2px solid #2271b1;
+    box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.15);
+}
+
 .productmaster-image-child-tag {
     position: absolute;
     bottom: calc(100% + 6px);

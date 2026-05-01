@@ -183,12 +183,27 @@
         });
     }
 
+
+    function syncMultiParentVisualState(form) {
+        if (!form) {
+            return;
+        }
+
+        var multiParentItems = form.querySelectorAll('.productmaster-multi-parent-item');
+        multiParentItems.forEach(function (item) {
+            var parentCheckbox = item.querySelector(':scope > .productmaster-image-child-label > .productmaster-image-child-checkbox');
+            item.classList.toggle('productmaster-parent-selected', !!(parentCheckbox && parentCheckbox.checked));
+        });
+    }
+
     function initializeImageChildrenToggles(form) {
         var childMenus = form.querySelectorAll('.productmaster-image-children-menu');
 
         childMenus.forEach(function (menu) {
             syncChildrenHeaderState(menu);
         });
+
+        syncMultiParentVisualState(form);
 
         form.addEventListener('change', function (event) {
             var target = event.target;
@@ -207,6 +222,7 @@
                     checkbox.checked = target.checked;
                 });
                 target.indeterminate = false;
+                syncMultiParentVisualState(form);
                 return;
             }
 
@@ -231,6 +247,7 @@
                 nestedChildCheckboxes.forEach(function (checkbox) {
                     checkbox.checked = target.checked;
                 });
+                syncMultiParentVisualState(form);
                 return;
             }
 
@@ -268,6 +285,8 @@
                         }
                     }
                 }
+
+                syncMultiParentVisualState(form);
             }
         });
     }

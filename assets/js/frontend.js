@@ -6,8 +6,25 @@
             return;
         }
 
+        if (form.dataset.pmSubmitting === '1') {
+            return;
+        }
+
+        form.dataset.pmSubmitting = '1';
+
         normalizeHierarchySelectionsForSubmit(form);
-        form.requestSubmit ? form.requestSubmit() : form.submit();
+
+        try {
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
+        } finally {
+            window.setTimeout(function () {
+                form.dataset.pmSubmitting = '0';
+            }, 500);
+        }
     }
 
     function normalizeHierarchySelectionsForSubmit(form) {

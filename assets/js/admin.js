@@ -21,6 +21,17 @@
                     width: width + 'px',
                     left: '-' + leftOffset + 'px'
                 });
+
+                $menu.find('> .productmaster-image-children-grid > .productmaster-multi-parent-item > .productmaster-image-children-menu').each(function () {
+                    var $nestedMenu = $(this);
+                    var $item = $nestedMenu.closest('.productmaster-multi-parent-item');
+                    var itemOffset = $item.length ? $item.position().left : 0;
+
+                    $nestedMenu.css({
+                        width: width + 'px',
+                        left: '-' + itemOffset + 'px'
+                    });
+                });
             });
         });
     }

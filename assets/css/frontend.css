@@ -115,6 +115,7 @@
 
 .productmaster-multi-parent-item > .productmaster-image-children-menu {
     top: calc(100% - 10px);
+    left: 0;
 }
 
 .productmaster-image-children-header {
@@ -163,6 +164,12 @@
 }
 
 .productmaster-image-child-checkbox:checked ~ .productmaster-image-thumb {
+    border: 2px solid #2271b1;
+    box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.15);
+}
+
+
+.productmaster-multi-parent-item.productmaster-parent-selected > .productmaster-image-children-menu .productmaster-image-thumb {
     border: 2px solid #2271b1;
     box-shadow: 0 0 0 1px rgba(34, 113, 177, 0.15);
 }

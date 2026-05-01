@@ -143,7 +143,7 @@
                 return;
             }
 
-            var childMenus = grid.querySelectorAll('.productmaster-image-children-menu');
+            var childMenus = grid.querySelectorAll('.productmaster-image-parent > .productmaster-image-children-menu');
             childMenus.forEach(function (menu) {
                 var parent = menu.closest('.productmaster-image-parent');
                 var leftOffset = 0;
@@ -154,6 +154,14 @@
 
                 menu.style.width = width + 'px';
                 menu.style.left = '-' + leftOffset + 'px';
+
+                var nestedMenus = menu.querySelectorAll(':scope > .productmaster-image-children-grid > .productmaster-multi-parent-item > .productmaster-image-children-menu');
+                nestedMenus.forEach(function (nestedMenu) {
+                    var item = nestedMenu.closest('.productmaster-multi-parent-item');
+                    var itemOffset = item ? item.offsetLeft : 0;
+                    nestedMenu.style.width = width + 'px';
+                    nestedMenu.style.left = '-' + itemOffset + 'px';
+                });
             });
         });
     }

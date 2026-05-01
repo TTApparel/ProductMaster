@@ -143,7 +143,7 @@
                 return;
             }
 
-            var childMenus = grid.querySelectorAll('.productmaster-image-children-menu');
+            var childMenus = grid.querySelectorAll('.productmaster-image-parent > .productmaster-image-children-menu');
             childMenus.forEach(function (menu) {
                 var parent = menu.closest('.productmaster-image-parent');
                 var leftOffset = 0;

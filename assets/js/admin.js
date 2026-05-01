@@ -11,7 +11,7 @@
             }
 
             var gridLeft = $grid.offset().left;
-            $grid.find('.productmaster-image-children-menu').each(function () {
+            $grid.find('> .productmaster-image-parent > .productmaster-image-children-menu').each(function () {
                 var $menu = $(this);
                 var $parent = $menu.closest('.productmaster-image-parent');
                 var parentLeft = $parent.length ? $parent.offset().left : gridLeft;

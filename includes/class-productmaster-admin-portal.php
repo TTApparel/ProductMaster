@@ -2420,7 +2420,7 @@ class ProductMaster_Admin_Portal
                 echo '</label>';
                 if (!empty($child_slugs)) {
                     echo '<div class="productmaster-image-children-menu">';
-                    echo '<label class="productmaster-image-children-header">' . esc_html($term->name) . '</label>';
+                    echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($source_filter['id'] . ':' . self::MULTI_FILTER_PARENT_TOKEN_PREFIX . $term->slug) . '" /> ' . esc_html($term->name) . '</label>';
                     echo '<div class="productmaster-image-children-grid">';
                     foreach ($child_slugs as $child_slug) {
                         $child_slug = sanitize_title((string) $child_slug);

@@ -2382,6 +2382,7 @@ class ProductMaster_Admin_Portal
 
             echo '<div class="productmaster-image-parent">';
             echo '<label class="productmaster-image-parent-label">';
+            echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($source_filter['id']) . '" ' . checked(isset($selected_lookup[$source_filter['id']]), true, false) . ' />';
             $source_filter_image = isset($filter['presentation']['source_filter_images'][$source_filter['id']]) ? esc_url((string) $filter['presentation']['source_filter_images'][$source_filter['id']]) : '';
             if (!empty($source_filter_image)) {
                 echo '<img src="' . esc_url($source_filter_image) . '" alt="' . esc_attr($source_filter['label']) . '" class="productmaster-image-thumb" />';

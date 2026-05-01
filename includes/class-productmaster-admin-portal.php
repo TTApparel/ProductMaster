@@ -2760,7 +2760,7 @@ class ProductMaster_Admin_Portal
                 echo '<' . esc_attr($tag) . ' class="productmaster-loop-field productmaster-loop-categories" ' . $inline_style . '>' . esc_html(implode(', ', array_slice($categories, 0, 3))) . '</' . esc_attr($tag) . '>';
             } elseif ('color_variations' === $field) {
                 if (empty($color_variation_images) && ($is_preview || $product->is_type('variable'))) {
-                    $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+                    $fallback_image = $this->get_loop_color_fallback_image($product);
                     if (!empty($fallback_image) && $is_preview) {
                         $color_variation_images = $this->get_preview_random_color_variation_images($fallback_image);
                     } elseif (!empty($fallback_image)) {
@@ -2793,6 +2793,17 @@ class ProductMaster_Admin_Portal
         return (string) ob_get_clean();
     }
 
+
+    private function get_loop_color_fallback_image($product)
+    {
+        $fallback_image = wp_get_attachment_image_url($product->get_image_id(), 'woocommerce_thumbnail');
+        if (!empty($fallback_image)) {
+            return $fallback_image;
+        }
+
+        $placeholder = wc_placeholder_img_src('woocommerce_thumbnail');
+        return !empty($placeholder) ? (string) $placeholder : '';
+    }
 
     private function get_preview_random_color_variation_images($fallback_image)
     {

@@ -11,7 +11,7 @@
             }
 
             var gridLeft = $grid.offset().left;
-            $grid.find('.productmaster-image-children-menu').each(function () {
+            $grid.find('> .productmaster-image-parent > .productmaster-image-children-menu').each(function () {
                 var $menu = $(this);
                 var $parent = $menu.closest('.productmaster-image-parent');
                 var parentLeft = $parent.length ? $parent.offset().left : gridLeft;
@@ -20,6 +20,17 @@
                 $menu.css({
                     width: width + 'px',
                     left: '-' + leftOffset + 'px'
+                });
+
+                $menu.find('> .productmaster-image-children-grid > .productmaster-multi-parent-item > .productmaster-image-children-menu').each(function () {
+                    var $nestedMenu = $(this);
+                    var $item = $nestedMenu.closest('.productmaster-multi-parent-item');
+                    var itemOffset = $item.length ? $item.position().left : 0;
+
+                    $nestedMenu.css({
+                        width: width + 'px',
+                        left: '-' + itemOffset + 'px'
+                    });
                 });
             });
         });

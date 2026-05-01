@@ -115,6 +115,7 @@
 
 .productmaster-multi-parent-item > .productmaster-image-children-menu {
     top: calc(100% - 10px);
+    left: 0;
 }
 
 .productmaster-image-children-header {

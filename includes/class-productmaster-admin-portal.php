@@ -1460,7 +1460,12 @@ class ProductMaster_Admin_Portal
         foreach ((array) $selected_values as $selected_value) {
             $selected_value = sanitize_text_field((string) $selected_value);
             if (false === strpos($selected_value, ':')) {
-                $translated[] = $selected_value;
+                $selected_source_id = sanitize_key($selected_value);
+                if (!empty($filters_by_id[$selected_source_id]['label'])) {
+                    $translated[] = (string) $filters_by_id[$selected_source_id]['label'];
+                } else {
+                    $translated[] = $selected_value;
+                }
                 continue;
             }
 
@@ -2379,6 +2384,7 @@ class ProductMaster_Admin_Portal
 
             echo '<div class="productmaster-image-parent">';
             echo '<label class="productmaster-image-parent-label">';
+            echo '<input type="checkbox" class="productmaster-image-parent-checkbox" name="' . esc_attr($param_key) . '" value="' . esc_attr($source_filter['id']) . '" ' . checked(isset($selected_lookup[$source_filter['id']]), true, false) . ' />';
             $source_filter_image = isset($filter['presentation']['source_filter_images'][$source_filter['id']]) ? esc_url((string) $filter['presentation']['source_filter_images'][$source_filter['id']]) : '';
             if (!empty($source_filter_image)) {
                 echo '<img src="' . esc_url($source_filter_image) . '" alt="' . esc_attr($source_filter['label']) . '" class="productmaster-image-thumb" />';
@@ -2417,7 +2423,7 @@ class ProductMaster_Admin_Portal
                 echo '</label>';
                 if (!empty($child_slugs)) {
                     echo '<div class="productmaster-image-children-menu">';
-                    echo '<label class="productmaster-image-children-header">' . esc_html($term->name) . '</label>';
+                    echo '<label class="productmaster-image-children-header"><input type="checkbox" class="productmaster-image-children-toggle" value="' . esc_attr($source_filter['id'] . ':' . self::MULTI_FILTER_PARENT_TOKEN_PREFIX . $term->slug) . '" /> ' . esc_html($term->name) . '</label>';
                     echo '<div class="productmaster-image-children-grid">';
                     foreach ($child_slugs as $child_slug) {
                         $child_slug = sanitize_title((string) $child_slug);

@@ -339,6 +339,7 @@ class ProductMaster_Admin_Portal
                 'post_type' => 'product',
                 'post_status' => 'publish',
                 'posts_per_page' => $limit,
+                'productmaster_shortcode_loop_query' => true,
             )
         );
 
@@ -785,7 +786,9 @@ class ProductMaster_Admin_Portal
 
     public function apply_filters_to_product_query($query)
     {
-        if (is_admin() || !$query->is_main_query()) {
+        $is_shortcode_loop_query = (bool) $query->get('productmaster_shortcode_loop_query', false);
+
+        if (is_admin() || (!$query->is_main_query() && !$is_shortcode_loop_query)) {
             return;
         }
 

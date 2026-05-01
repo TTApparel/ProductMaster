@@ -113,10 +113,6 @@
     box-sizing: border-box;
 }
 
-.productmaster-multi-parent-item > .productmaster-image-children-menu {
-    top: calc(100% - 10px);
-}
-
 .productmaster-image-children-header {
     display: flex;
     align-items: center;
